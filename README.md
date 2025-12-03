@@ -142,7 +142,7 @@ This framework is agnostic to the underlying architecture. We provide configurat
 | **MoDL** | Supervised | Physics-Driven (Unrolled) | Model-based Deep Learning |
 | **U-Net** | Supervised | Data-Driven | Fully Convolutional Network |
 | **N2R** | Semi-Supervised | Physics-Driven (Unrolled) | Noise2Recon |
-| **VORTEX** | Semi-Supervised | Physics-Driven (Unrolled) | Variable-density Optimized Reconstruction Through EXemplars |
+| **VORTEX** | Semi-Supervised | Physics-Driven (Unrolled) | Physics-driven data augmentations using consistency training |
 | **SSDU** | Self-Supervised | Physics-Driven (Unrolled) | Self-supervised learning via Data Undersampling |
 
 ---
