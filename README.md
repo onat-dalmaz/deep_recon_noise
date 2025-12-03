@@ -1,6 +1,6 @@
 # Efficient Noise Calculation in Deep Learning-based MRI Reconstructions
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 
 Official implementation of **"Efficient Noise Calculation in Deep Learning-based MRI Reconstructions"**, accepted as a **Poster** at **ICML 2025**.
@@ -203,7 +203,9 @@ If you use this code in your research, please cite our ICML 2025 paper:
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Important Patent Notice:** This software is subject to one or more pending patent applications. Patent rights are NOT granted under the MIT License. Use of this software may require a separate patent license. See [PATENT_NOTICE](PATENT_NOTICE) for more information.
 
 ---
 
