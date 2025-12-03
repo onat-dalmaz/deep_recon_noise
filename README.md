@@ -136,13 +136,14 @@ with torch.no_grad():
 
 This framework is agnostic to the underlying architecture. We provide configurations for the following:
 
-| Model | Type | Description |
-|-------|------|-------------|
-| **E2E-VarNet** | Physics-Driven | End-to-end Variational Network |
-| **MoDL** | Physics-Driven | Model-based Deep Learning |
-| **N2R** | Unsupervised | Noise2Recon |
-| **SSDU** | Self-Supervised | Self-supervised learning via Data Undersampling |
-| **VORTEX** | Physics-Driven | Variable-density Optimized Reconstruction Through EXemplars |
+| Model | Paradigm | Architecture | Description |
+|-------|----------|--------------|-------------|
+| **E2E-VarNet** | Supervised | Physics-Driven (Unrolled) | End-to-end Variational Network |
+| **MoDL** | Supervised | Physics-Driven (Unrolled) | Model-based Deep Learning |
+| **U-Net** | Supervised | Data-Driven | Fully Convolutional Network |
+| **N2R** | Semi-Supervised | Physics-Driven (Unrolled) | Noise2Recon |
+| **VORTEX** | Semi-Supervised | Physics-Driven (Unrolled) | Variable-density Optimized Reconstruction Through EXemplars |
+| **SSDU** | Self-Supervised | Physics-Driven (Unrolled) | Self-supervised learning via Data Undersampling |
 
 ---
 
