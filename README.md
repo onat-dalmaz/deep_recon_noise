@@ -1,238 +1,191 @@
 # Efficient Noise Calculation in Deep Learning-based MRI Reconstructions
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Paper](https://img.shields.io/badge/ICML-2025-red.svg)](https://proceedings.mlr.press/v267/dalmaz25a.html)
 
-Official implementation of **"Efficient Noise Calculation in Deep Learning-based MRI Reconstructions"**, accepted to **ICML 2025**.
+Official implementation of the paper **"Efficient Noise Calculation in Deep Learning-based MRI Reconstructions"**, accepted at **ICML 2025**.
 
-**Authors:** Onat Dalmaz · Arjun D. Desai · Reinhard Heckel · Tolga Cukur · Akshay S. Chaudhari · Brian Hargreaves
-
-**Paper Links:**
-- [OpenReview](https://openreview.net/forum?id=br7fTbnd16)
-- [PMLR Proceedings](https://proceedings.mlr.press/v267/dalmaz25a.html)
+**Authors:** Onat Dalmaz, Arjun D. Desai, Reinhard Heckel, Tolga Cukur, Akshay S. Chaudhari, Brian Hargreaves.
 
 ---
 
-## 📋 Abstract
+## 📖 Overview
 
-Accelerated MRI reconstruction involves solving an ill-posed inverse problem where noise in acquired data propagates to the reconstructed images. Noise analyses are central to MRI reconstruction for providing an explicit measure of solution fidelity and for guiding the design and deployment of novel reconstruction methods. However, deep learning (DL)-based reconstruction methods have often overlooked noise propagation due to inherent analytical and computational challenges, despite its critical importance. 
+Accelerated MRI reconstruction is an ill-posed inverse problem where measurement noise propagates into the reconstructed image. While noise analysis is critical for quantifying reliability, it is often absent in Deep Learning (DL) reconstruction due to computational barriers.
 
-This work proposes a theoretically grounded, memory-efficient technique to calculate voxel-wise variance for quantifying uncertainty due to acquisition noise in accelerated MRI reconstructions. Our approach is based on approximating the noise covariance using the DL network's Jacobian, which is intractable to calculate. To circumvent this, we derive an unbiased estimator for the diagonal of this covariance matrix—voxel-wise variance—, and introduce a Jacobian sketching technique to efficiently implement it. 
+This repository provides a **theoretically grounded** and **memory-efficient** framework to compute the **voxel-wise variance** (the diagonal of the noise covariance matrix) for DL-based MRI reconstructions.
 
-We evaluate our method on knee and brain MRI datasets for both data-driven and physics-driven networks trained in supervised and unsupervised manners. Compared to empirical references obtained via Monte-Carlo simulations, our technique achieves near-equivalent performance while reducing computational and memory demands by an order of magnitude or more. Furthermore, our method is robust across varying input noise levels, acceleration factors, and diverse undersampling schemes, highlighting its broad applicability. Our work reintroduces accurate and efficient noise analysis as a central tenet of reconstruction algorithms, holding promise to reshape how we evaluate and deploy DL-based MRI.
+### Why use this?
+
+*   **🚀 Efficient:** Reduces compute and memory usage by an order of magnitude compared to Monte-Carlo simulations.
+*   **🎯 Accurate:** Provides an unbiased estimator of voxel-wise variance via Jacobian sketching.
+*   **🔌 Plug-and-Play:** Integrated with [meddlr](https://github.com/ad12/meddlr); works with supervised, self-supervised, and physics-driven models.
 
 ---
 
-## 📊 Results
+## ⚙️ Methodology
+
+We model the propagation of noise covariance $\boldsymbol{\Sigma}$ through a reconstruction network $f_\theta$ via its Jacobian $\mathbf{J}$. The target voxel-wise variance is the diagonal of the posterior covariance:
+
+$$ \text{Var}(\mathbf{x}) = \text{diag}(\mathbf{J} \boldsymbol{\Sigma} \mathbf{J}^H) $$
+
+Since explicitly forming $\mathbf{J}$ is intractable for high-dimensional images, we utilize **Jacobian Vector Products (JVPs)** combined with a randomized sketching estimator to approximate the diagonal efficiently without ever instantiating the full matrix.
 
 ![Results](methods_brain.png)
 
-*Results demonstrating our efficient noise calculation method on brain MRI reconstructions.*
+*Figure 1: Comparison of uncertainty maps on brain MRI. Our efficient estimator (right) matches the Monte-Carlo reference (left) while requiring significantly fewer resources.*
 
 ---
 
-## ✨ Key Features
-
-- **Memory-Efficient**: Reduces computational and memory demands by an order of magnitude compared to Monte-Carlo simulations
-- **Theoretically Grounded**: Unbiased estimator for voxel-wise variance based on network Jacobian approximation
-- **Broad Applicability**: Works with both data-driven and physics-driven networks, trained in supervised and unsupervised manners
-- **Robust**: Validated across varying noise levels, acceleration factors, and undersampling schemes
-- **Easy to Use**: Integrated into the meddlr framework with simple configuration files
-
----
-
-## 🚀 Installation
+## 🛠 Installation
 
 ### Prerequisites
 
-- Python 3.6 or higher
-- CUDA-capable GPU (recommended)
-- Conda (recommended for environment management)
+*   Linux or macOS
+*   Python 3.8+
+*   CUDA-capable GPU (highly recommended)
 
-### Step-by-Step Installation
+### Setup
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd meddlr
-   ```
+1.  **Clone the repository:**
 
-2. **Create and activate a conda environment:**
-   ```bash
-   conda create -n meddlr_env python=3.9
-   conda activate meddlr_env
-   ```
+    ```bash
+    git clone https://github.com/onat-dalmaz/deep_recon_noise.git
+    cd meddlr
+    ```
 
-3. **Install PyTorch with CUDA support:**
-   ```bash
-   # For CUDA 10.1 (adjust version as needed)
-   conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
-   
-   # For other CUDA versions, visit: https://pytorch.org/get-started/locally/
-   ```
+2.  **Create a virtual environment:**
 
-4. **Install optional GPU-accelerated libraries:**
-   ```bash
-   pip install cupy-cuda101  # Adjust version (e.g., cupy-cuda111) based on your CUDA version
-   ```
+    ```bash
+    conda create -n meddlr_env python=3.9
+    conda activate meddlr_env
+    ```
 
-5. **Install project dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+3.  **Install PyTorch:**
 
-6. **Install the package in editable mode:**
-   ```bash
-   pip install -e .
-   ```
+    Select the version matching your CUDA setup (e.g., CUDA 11.8):
+
+    ```bash
+    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+    ```
+
+4.  **Install dependencies and the package:**
+
+    ```bash
+    pip install -r requirements.txt
+    pip install -e .
+    ```
 
 ---
 
-## 📁 Project Structure
+## 🚀 Quick Start
 
-```
-meddlr/
-├── configs/              # Configuration files for different models & datasets
-│   └── mri-recon/       # MRI reconstruction configurations
-│       ├── fastmri-brain/
-│       └── mridata-3dfse-knee/
-├── datasets/            # Dataset processing scripts and metadata
-├── inference_bash/      # Bash scripts for running inference with noise calculation
-├── training_bash/       # Bash scripts for training models
-├── tools/              # Utility scripts (training, evaluation)
-├── meddlr/             # Core implementation
-│   ├── modeling/       # Model architectures
-│   ├── transforms/     # Data transforms
-│   ├── metrics/        # Evaluation metrics
-│   └── ...
-├── tests/              # Unit tests
-├── docs/               # Documentation
-└── README.md           # This file
-```
+### 1. Training Models
 
----
+Training scripts are located in `training_bash/`.
 
-## 🎯 Quick Start
-
-### Training a Model
-
-Training scripts are available in the `training_bash/` directory. To train a specific model:
+**Example: Train E2E-VarNet on Brain Data**
 
 ```bash
-bash training_bash/run_training_{model_name}.sh
+bash training_bash/run_training_e2e_varnet_brain.sh
 ```
 
-**Examples:**
-- Train **E2E-VarNet** on brain dataset:
-  ```bash
-  bash training_bash/run_training_e2e_varnet_brain.sh
-  ```
+### 2. Inference with Noise Estimation
 
-- Train **MoDL** on knee dataset:
-  ```bash
-  bash training_bash/run_training_modl.sh
-  ```
+To run reconstruction and compute the efficient noise map, use the scripts in `inference_bash/`.
 
-### Running Inference with Noise Calculation
-
-To run inference on a trained model and calculate voxel-wise variance:
+**Example: Run MoDL Inference**
 
 ```bash
-bash inference_bash/run_inference_{model_name}.sh
+bash inference_bash/run_inference_modl.sh
 ```
 
-**Examples:**
-- Run inference for **MoDL**:
-  ```bash
-  bash inference_bash/run_inference_modl.sh
-  ```
+### 3. Python API Usage
 
-- Run inference for **E2E-VarNet** on brain:
-  ```bash
-  bash inference_bash/run_inference_e2e_varnet_brain.sh
-  ```
+You can also integrate the noise estimator directly into your Python scripts:
 
-### Configuration
+```python
+import torch
+from meddlr.modeling import build_model
+from meddlr.config import get_cfg
 
-Model and training configurations are stored in the `configs/` directory as YAML files. These files define:
-- Model architecture and hyperparameters
-- Dataset paths and preprocessing
-- Training settings (optimizer, learning rate, etc.)
-- Noise calculation parameters
+# 1. Load Configuration
+cfg = get_cfg()
+cfg.merge_from_file("configs/mri-recon/fastmri-brain/varnet.yaml")
+
+# 2. Build Model
+model = build_model(cfg)
+model.eval()
+
+# 3. Run Reconstruction with Noise Estimation
+# (Assuming 'inputs' is your k-space data)
+with torch.no_grad():
+    output_image = model(inputs)
+    
+    # Enable noise calculation via config or method call
+    noise_map = model.compute_noise_variance(inputs, method="efficient_sketching")
+```
 
 ---
 
 ## 📊 Supported Models
 
-This implementation supports various deep learning-based MRI reconstruction models:
+This framework is agnostic to the underlying architecture. We provide configurations for the following:
 
-- **E2E-VarNet**: End-to-end variational network
-- **MoDL**: Model-based deep learning
-- **N2R**: Noise2Recon
-- **SSDU**: Self-supervised learning via data undersampling
-- **VORTEX**: Variable-density Optimized Reconstruction Through EXemplars
-
-All models can be trained and evaluated with our efficient noise calculation method.
+| Model | Type | Description |
+|-------|------|-------------|
+| **E2E-VarNet** | Physics-Driven | End-to-end Variational Network |
+| **MoDL** | Physics-Driven | Model-based Deep Learning |
+| **N2R** | Unsupervised | Noise2Recon |
+| **SSDU** | Self-Supervised | Self-supervised learning via Data Undersampling |
+| **VORTEX** | Physics-Driven | Variable-density Optimized Reconstruction Through EXemplars |
 
 ---
 
-## 📖 Citation
+## 📂 Repository Layout
 
-If you use this code in your research, please cite our ICML 2025 paper:
+```text
+meddlr/
+├── configs/              # YAML configs for models and noise settings
+├── datasets/             # Data loaders and preprocessing
+├── inference_bash/       # Scripts for inference + variance estimation
+├── training_bash/        # Scripts for model training
+├── meddlr/               # Source code
+│   ├── modeling/         # Network architectures & noise layers
+│   ├── ops/              # Jacobian vector product utilities
+│   └── ...
+└── tools/                # Entry points (train_net.py, etc.)
+```
+
+---
+
+## 📝 Citation
+
+If you find this code or our paper useful, please cite:
 
 ```bibtex
 @InProceedings{pmlr-v267-dalmaz25a,
-  title = 	 {Efficient Noise Calculation in Deep Learning-based {MRI} Reconstructions},
-  author =       {Dalmaz, Onat and Desai, Arjun D and Heckel, Reinhard and Cukur, Tolga and Chaudhari, Akshay S and Hargreaves, Brian},
-  booktitle = 	 {Proceedings of the 42nd International Conference on Machine Learning},
-  pages = 	 {12280--12313},
-  year = 	 {2025},
-  editor = 	 {Singh, Aarti and Fazel, Maryam and Hsu, Daniel and Lacoste-Julien, Simon and Berkenkamp, Felix and Maharaj, Tegan and Wagstaff, Kiri and Zhu, Jerry},
-  volume = 	 {267},
-  series = 	 {Proceedings of Machine Learning Research},
-  month = 	 {13--19 Jul},
-  publisher =    {PMLR},
-  pdf = 	 {https://raw.githubusercontent.com/mlresearch/v267/main/assets/dalmaz25a/dalmaz25a.pdf},
-  url = 	 {https://proceedings.mlr.press/v267/dalmaz25a.html}
+  title     = {Efficient Noise Calculation in Deep Learning-based {MRI} Reconstructions},
+  author    = {Dalmaz, Onat and Desai, Arjun D and Heckel, Reinhard and Cukur, Tolga and Chaudhari, Akshay S and Hargreaves, Brian},
+  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+  pages     = {12280--12313},
+  year      = {2025},
+  editor    = {Singh, A. and Fazel, M. and Hsu, D. and Lacoste-Julien, S. and Berkenkamp, F. and Maharaj, T. and Wagstaff, K. and Zhu, J.},
+  volume    = {267},
+  series    = {Proceedings of Machine Learning Research},
+  publisher = {PMLR},
+  url       = {https://proceedings.mlr.press/v267/dalmaz25a.html}
 }
 ```
 
 ---
 
-## 👥 Authors
+## ⚖️ License & Patent Notice
 
-- **Onat Dalmaz**
-- **Arjun Desai**
-- **Reinhard Heckel**
-- **Tolga Cukur**
-- **Akshay Chaudhari**
-- **Brian Hargreaves**
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-**Important Patent Notice:** This software is subject to one or more pending patent applications. Patent rights are NOT granted under the MIT License. Use of this software may require a separate patent license. See [PATENT_NOTICE](PATENT_NOTICE) for more information.
-
----
-
-## 🙏 Acknowledgments
-
-This work is built on top of the [meddlr](https://github.com/ad12/meddlr) framework for medical image reconstruction. We thank the meddlr team for their excellent framework.
-
----
+*   **Code License:** [MIT License](LICENSE).
+*   **⚠️ Patent Notice:** This software is subject to one or more pending patent applications. Patent rights are not granted under the MIT License. Use of this software for commercial purposes may require a separate patent license. Please see the [PATENT_NOTICE](PATENT_NOTICE) file for details.
 
 ## 📧 Contact
 
-For questions or issues, please open an issue on GitHub or contact the authors.
-
----
-
-## 🔗 Related Links
-
-- [OpenReview](https://openreview.net/forum?id=br7fTbnd16) - Paper on OpenReview
-- [PMLR Proceedings](https://proceedings.mlr.press/v267/dalmaz25a.html) - Official publication in PMLR
-- [ICML 2025](https://icml.cc/) - International Conference on Machine Learning
-- [meddlr Framework](https://github.com/ad12/meddlr) - Base framework for medical image reconstruction
+For questions, issues, or collaboration, please open a GitHub Issue or contact the authors directly.
