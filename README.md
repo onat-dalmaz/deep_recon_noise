@@ -30,7 +30,7 @@ We model the propagation of noise covariance $\boldsymbol{\Sigma}$ through a rec
 
 $$ \text{Var}(\mathbf{x}) = \text{diag}(\mathbf{J} \boldsymbol{\Sigma} \mathbf{J}^H) $$
 
-Since explicitly forming $\mathbf{J}$ is intractable for high-dimensional images, we utilize **Jacobian Vector Products (JVPs)** combined with a randomized sketching estimator to approximate the diagonal efficiently without ever instantiating the full matrix.
+Since explicitly forming $\mathbf{J}$ is intractable for high-dimensional images, we leverage **Jacobian Vector Products (JVPs)**. We implement this efficiently using `torch.func.jvp` for forward-mode automatic differentiation and `torch.vmap` to vectorize the computation across a batch of random sketching vectors. This allows us to approximate the variance without ever instantiating the full Jacobian matrix.
 
 ![Results](methods_brain.png)
 
@@ -112,7 +112,7 @@ from meddlr.config import get_cfg
 
 # 1. Load Configuration
 cfg = get_cfg()
-cfg.merge_from_file("configs/mri-recon/fastmri-brain/varnet.yaml")
+cfg.merge_from_file("configs/mri-recon/mridata-3dfse-knee/unrolled.yaml")
 
 # 2. Build Model
 model = build_model(cfg)
@@ -191,4 +191,4 @@ If you find this code or our paper useful, please cite:
 
 ## 📧 Contact
 
-For questions, issues, or collaboration, please open a GitHub Issue or contact the authors directly.
+For questions, issues, or collaboration, please open a GitHub Issue.
