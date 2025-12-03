@@ -382,11 +382,7 @@ class GeneralizedUnrolledCNN(nn.Module):
         # Combine to form a batch of complex Rademacher vectors
         v_batch = real_part + 1j * imag_part
 
-        print(sigma_k.shape)
-
         v_batch = torch.matmul(v_batch, sigma_k)  # Shape remains: (100, 320, 256, nc)
-
-        print(v_batch.shape)
 
         u_batch = A(v_batch, adjoint=True)  # Shape: (100, 320, 256, 1)
 
@@ -398,7 +394,6 @@ class GeneralizedUnrolledCNN(nn.Module):
 
         end = time.time()
         time_taken = end - start
-        print(f"Time taken for Jacobian Sketching: {time_taken:.2f} seconds")
 
         return variance_reconstructed, time_taken
 

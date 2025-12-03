@@ -34,7 +34,7 @@ Since explicitly forming $\mathbf{J}$ is intractable for high-dimensional images
 
 ![Results](methods_brain.png)
 
-*Figure 1: Comparison of uncertainty maps on brain MRI. Our efficient estimator (right) matches the Monte-Carlo reference (left) while requiring significantly fewer resources.*
+*Figure 1: Comparison of uncertainty maps on brain MRI. Our efficient estimator matches the Empirical Monte-Carlo references while requiring significantly fewer resources.*
 
 ---
 
@@ -119,12 +119,15 @@ model = build_model(cfg)
 model.eval()
 
 # 3. Run Reconstruction with Noise Estimation
-# (Assuming 'inputs' is your k-space data)
+# (Assuming 'kspace' is your raw data, 'A' is the forward operator, 
+# and 'sigma_k' is the noise covariance matrix)
 with torch.no_grad():
+    # Run standard reconstruction
     output_image = model(inputs)
     
-    # Enable noise calculation via config or method call
-    noise_map = model.compute_noise_variance(inputs, method="efficient_sketching")
+    # Compute voxel-wise noise variance using Jacobian Sketching
+    # S: Number of sketching vectors (default=100)
+    noise_map, time_taken = model.J_sketch_variance(kspace, A, sigma_k, S=100)
 ```
 
 ---
