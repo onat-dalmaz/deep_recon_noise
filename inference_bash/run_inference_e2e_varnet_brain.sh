@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Define variables for the command line arguments
+R=8,
+NUM_UNROLLED_STEPS=4
+TRAIN_BATCH_SIZE=1
+TEST_BATCH_SIZE=1
+METRIC="val_psnr_scan"
+slices=($(seq 0 16))
+VARIANCES_LIST=$(IFS=,; echo "${slices[*]}")
+VARIANCE_CALCULATION_METHOD="J_sketch"
+
+
+CONFIG_FILE="configs/mri-recon/fastmri-brain/unrolled-exps/supervised.yaml"
+MEDDLR_CACHE_DIR="/cache/meddlr"
+MEDDLR_DATASETS_DIR="/data"
+MEDDLR_RESULTS_DIR="/results_noise"
+
+
+MODEL_WEIGHTS="results_noise/mri-recon/fastmri-brain-mini/unrolled/8x/model_0049999.pth"
+
+
+export MEDDLR_CACHE_DIR
+export MEDDLR_DATASETS_DIR
+export MEDDLR_RESULTS_DIR
+
+python tools/eval_net.py \
+--config-file $CONFIG_FILE \
+--metric $METRIC \
+MODEL.WEIGHTS $MODEL_WEIGHTS \
+MODEL.UNROLLED.NUM_UNROLLED_STEPS $NUM_UNROLLED_STEPS \
+AUG_TEST.UNDERSAMPLE.ACCELERATIONS $R \
+AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS $R \
+SOLVER.TRAIN_BATCH_SIZE $TRAIN_BATCH_SIZE \
+SOLVER.TEST_BATCH_SIZE $TEST_BATCH_SIZE \
+TEST.CALCULATE_PIXEL_VARIANCES True \
+TEST.VARIANCES_LIST $VARIANCES_LIST \
+TEST.VARIANCE_CALCULATION_METHOD $VARIANCE_CALCULATION_METHOD
+

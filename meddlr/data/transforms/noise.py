@@ -4,7 +4,7 @@ import torch
 
 from meddlr.ops import complex as cplx
 from meddlr.utils.events import get_event_storage
-
+import numpy as np  # added by me
 
 class NoiseModel:
     """A model that adds additive white noise.
@@ -53,6 +53,7 @@ class NoiseModel:
         mask=None,
         seed=None,
         device=None,
+        cov_matrix_path=None,
     ):
         """
         Args:
@@ -78,6 +79,13 @@ class NoiseModel:
         self.rho = None
         if mask is not None:
             self.rho = mask.RHO
+        
+        #load covariance matrix from file which is precomputed .npy file
+        # if cov_matrix_path is not None:
+        #     self.cov_matrix = torch.tensor(np.load(cov_matrix_path))
+        # else:
+        #     self.cov_matrix = None
+        self.cov_matrix = None
 
         # For reproducibility.
         g = torch.Generator(device=device)
@@ -112,11 +120,12 @@ class NoiseModel:
         return self.forward(*args, **kwargs)
 
     def forward(self, kspace, mask=None, seed=None, clone=True) -> torch.Tensor:
-        """Performs augmentation on undersampled kspace mask."""
+        """Performs augmentation on undersampled kspace mask. with channel-wise uncorrelated noise."""
         if clone:
             kspace = kspace.clone()
         mask = cplx.get_mask(kspace)
 
+        # print(seed)
         g = (
             self.generator
             if seed is None
@@ -128,13 +137,70 @@ class NoiseModel:
             noise = torch.view_as_complex(noise)
         else:
             noise = noise_std * torch.randn(kspace.shape, generator=g, device=kspace.device)
-
+        # print(noise.shape)
         if self.rho is not None and self.rho != 1:
             mask = self.subsample_mask(mask)
         masked_noise = noise * mask
         aug_kspace = kspace + masked_noise
 
-        return aug_kspace
+        return aug_kspace,masked_noise
+    
+    # def forward(self, kspace, mask=None, seed=None, clone=True) -> torch.Tensor:
+    #     """Performs augmentation on undersampled kspace with channel-wise correlated noise."""
+    #     if clone:
+    #         kspace = kspace.clone()
+    #     if mask is None:
+    #         mask = torch.ones_like(kspace, dtype=torch.bool)
+
+    #     if seed is not None:
+    #         torch.manual_seed(seed)
+
+    #     n_c = kspace.shape[3]  # Assuming kspace.shape = (batch_size, height, width, n_c)
+    #     noise_std = self.choose_std_dev()
+    #     # print(noise_std)
+    #     # Validate or initialize the covariance matrix
+    #     if self.cov_matrix is None:
+    #         self.cov_matrix = torch.eye(n_c, device=kspace.device)  #**2
+    #     else:
+    #         assert self.cov_matrix.shape == (n_c, n_c), "Covariance matrix shape must match the number of channels."
+    #     self.cov_matrix = self.cov_matrix * noise_std #**2  # torch.eye(n_c, device=kspace.device) * noise_std #  Scale the covariance matrix by the noise standard deviation
+    #     # print(self.cov_matrix)
+    #     # Generate channel-wise correlated noise
+    #     L = torch.linalg.cholesky(self.cov_matrix)  # Cholesky decomposition for sampling
+    #     uncorrelated_noise = torch.randn(*kspace.shape[:-1], n_c, 2, device=kspace.device)  # Real and imaginary parts
+    #     # print(uncorrelated_noise.shape)
+    #     # print(L.shape)
+    #     # correlated_noise = torch.einsum('...ij,jk->...ik', uncorrelated_noise, L)  # Apply the covariance
+
+    #     # Flatten real and imaginary parts into the channel dimension
+    #     uncorrelated_noise_flat = uncorrelated_noise.reshape(*uncorrelated_noise.shape[:-2], -1)  # Shape [1, 320, 256, 16]
+
+    #     # Apply the covariance to the flattened noise
+    #     # Note: You'll need to adjust L to match the new channel dimension if you're correlating real & imaginary separately
+    #     # For simplicity, this example assumes L applies identically to real and imaginary parts, so we'll duplicate L for this purpose
+    #     L_expanded = L.repeat(2, 2)  # Now L has shape [16, 16], simulating identical correlation for real and imaginary parts
+    #     L_expanded = L_expanded.float()  # Convert L_expanded to Float if it was Double
+    #     correlated_noise_flat = torch.einsum('...ij,jk->...ik', uncorrelated_noise_flat, L_expanded)  # Apply the expanded covariance
+
+    #     # Reshape back to separate real and imaginary parts
+    #     correlated_noise = correlated_noise_flat.reshape(*uncorrelated_noise.shape[:-2], n_c, 2)  # Shape [1, 320, 256, 8, 2]
+
+    #     # print(correlated_noise.shape)
+
+
+    #     if cplx.is_complex(kspace):
+    #         correlated_noise = torch.view_as_complex(correlated_noise)
+    #     else:
+    #         correlated_noise = correlated_noise[..., 0]  # Use only the real part if kspace is not complex
+
+    #     # Apply mask if specified
+    #     if self.rho is not None and self.rho != 1:
+    #         mask = self.subsample_mask(mask)
+    #     masked_noise = correlated_noise * mask#.unsqueeze(-1)  # Ensure mask is applied across channels
+
+    #     aug_kspace = kspace + masked_noise
+
+    #     return aug_kspace
 
     def subsample_mask(self, mask: torch.Tensor, generator=None):
         """Subsamples mask to add the noise to.

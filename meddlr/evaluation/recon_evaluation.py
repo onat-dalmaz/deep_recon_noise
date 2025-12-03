@@ -210,17 +210,19 @@ class ReconEvaluator(ScanEvaluator):
 
         # Hacky way to postprocess the targets with hard data consistency (if specified).
         if "hard_dc" in self._postprocess:
+            print("hard_dc")
             outputs["pred"] = hard_data_consistency(
                 outputs["pred"],
                 acq_kspace=inputs["kspace"],
                 mask=inputs["postprocessing_mask"],
                 maps=inputs["maps"],
             )
-
+        # print(outputs.keys(),"in recon_evaluator")
         if self._skip_rescale:
             # Do not rescale the outputs
             preds = outputs["pred"]
             targets = outputs["target"]
+
         else:
             normalized = self._normalizer.undo(
                 image=outputs["pred"],
@@ -229,6 +231,10 @@ class ReconEvaluator(ScanEvaluator):
                 std=inputs["std"],
                 channels_last=True,
             )
+            # #print mean and std of the image
+            # print(f'Mean of image: {np.mean(normalized["image"])}')
+            # print(f'Std of image: {np.std(normalized["image"])}')
+
             preds = normalized["image"]
             targets = normalized["target"]
 
@@ -252,6 +258,7 @@ class ReconEvaluator(ScanEvaluator):
                 {
                     "pred": preds[i],
                     "target": targets[i],
+                    # "pixel_variances": outputs["pixel_variances"][i],
                     "metadata": inputs["metadata"][i] if "metadata" in inputs else {},
                 }
                 for i in range(N)
@@ -275,7 +282,7 @@ class ReconEvaluator(ScanEvaluator):
             # This does not work when predictions are real/imaginary are separate channels
             # TODO: Fix this.
             structure_by[-1] = structure_channel_by
-        to_struct = ("pred", "target")
+        to_struct = ("pred", "target")#, "pixel_variances")
 
         # Making a tensor contiguous can be an expensive operation.
         # We want to do it as few times as possible. Because we have to
@@ -337,10 +344,16 @@ class ReconEvaluator(ScanEvaluator):
             ):
                 self.evaluate_prediction(pred, self.scan_metrics, scan_id)
                 if self._save_scans:
+                    # print(pred["pred"].shape)
                     sio.dicttoh5(
                         {"pred": pred["pred"].cpu()},
                         os.path.join(self._save_scan_dir, f"{scan_id}.h5"),
                     )
+                    # #save pixel variances as well
+                    # sio.dicttoh5(
+                    #     {"pred": pred["pixel_variances"].cpu()},
+                    #     os.path.join(self._save_scan_dir, f"{scan_id}_var.h5"),
+                    # )
 
         if self._group_by_scan:
             pred_vals = self._group_results_by_scan()

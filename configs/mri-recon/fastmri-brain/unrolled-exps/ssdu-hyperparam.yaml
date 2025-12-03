@@ -1,0 +1,31 @@
+# Implementation of SSDU in meddlr
+# Based on recommendations from SSDU codebase: https://github.com/byaman14/SSDU/tree/6561977a0088b2c8a59737a72df50d77b63e3bb9
+_BASE_: "../templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"SSDU Unrolled ({MODEL.UNROLLED.BLOCK_ARCHITECTURE} block, {MODEL.UNROLLED.NUM_UNROLLED_STEPS} steps) -- fastmri 2D muliti-coil brain @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x, {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL} total scans, {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans, loss={MODEL.RECON_LOSS.NAME}, rho={MODEL.SSDU.MASKER.PARAMS.rhos}, kind={MODEL.SSDU.MASKER.PARAMS.kind}, share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}, calib_size={MODEL.SSDU.MASKER.PARAMS.calib_size}"
+  EXP_NAME: f"fastmri-brain-mini/ssdu-unrolled-hyperparam/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/loss={MODEL.RECON_LOSS.NAME}--rho={MODEL.SSDU.MASKER.PARAMS.rhos}--kind={MODEL.SSDU.MASKER.PARAMS.kind}--calib_size={MODEL.SSDU.MASKER.PARAMS.calib_size}"
+  PROJECT_NAME: ss_recon
+  TAGS:
+  - hyperparam_search
+  - unrolled
+  - fastmri_brain_mini
+  - ssdu
+OUTPUT_DIR: f"results://noise2recon/fastmri-brain-mini/hyperparam-search/ssdu-unrolled/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}step/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/loss={MODEL.RECON_LOSS.NAME}--rho={MODEL.SSDU.MASKER.PARAMS.rhos}--kind={MODEL.SSDU.MASKER.PARAMS.kind}--calib_size={MODEL.SSDU.MASKER.PARAMS.calib_size}"
+MODEL:
+  META_ARCHITECTURE: "SSDUModel"
+  SSDU:
+    META_ARCHITECTURE: "GeneralizedUnrolledCNN"
+    MASKER:
+      PARAMS:
+        p: 1.0
+        rhos: 0.4  # Default value in SSDU code
+        kind: "uniform"  # Choices: ["uniform", "gaussian"]
+        per_example: True
+        std_scale: 4  # Default value in SSDU code
+        calib_size: null  # Calibration size for training mask - null means no calibration
+  RECON_LOSS:
+    NAME: "k_l1_l2_sum_normalized"  # Used in SSDU paper
+    RENORMALIZE_DATA: False
+SOLVER:
+  MAX_ITER: 40000
+VERSION: 1

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# SUBSAMPLE_TRAIN:
+#     NUM_TOTAL: 14
+#     NUM_TOTAL_BY_GROUP: ()
+#     NUM_UNDERSAMPLED: 13
+
+# Define variables for parameters
+R=8
+NUM_UNROLLED_STEPS=4
+CONFIG_FILE="configs/mri-recon/mridata-3dfse-knee/n2r-unrolled-full.yaml"
+NUM_UNDERSAMPLED=13
+
+# Define MEDDLR environment variables
+MEDDLR_CACHE_DIR="/cache/meddlr"
+MEDDLR_DATASETS_DIR="/data"
+MEDDLR_RESULTS_DIR="/results_noise"
+
+# Export the MEDDLR environment variables
+export MEDDLR_CACHE_DIR
+export MEDDLR_DATASETS_DIR
+export MEDDLR_RESULTS_DIR
+
+# Run the training script with the specified variables
+python tools/train_net.py \
+--config-file $CONFIG_FILE \
+AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS ${R}, \
+MODEL.UNROLLED.NUM_UNROLLED_STEPS $NUM_UNROLLED_STEPS \
+DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED ${NUM_UNDERSAMPLED} 

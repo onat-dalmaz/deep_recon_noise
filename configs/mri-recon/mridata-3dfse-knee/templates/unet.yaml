@@ -1,0 +1,58 @@
+# U-Net template.
+# Note this follows the original U-Net template implementation to
+# ensure that we are comparing our methods the same way to all other
+# experiments.
+DATASETS:
+  TRAIN: ("mridata_knee_2019_train",)
+  VAL: ("mridata_knee_2019_val",)
+  TEST: ("mridata_knee_2019_test",)
+DATALOADER:
+  NUM_WORKERS: 12
+  DROP_LAST: true
+  PREFETCH_FACTOR: 2
+  SUBSAMPLE_TRAIN:
+    SEED: 1000
+    NUM_VAL: -1
+MODEL:
+  DEVICE: cuda
+  META_ARCHITECTURE: UnetModel
+  UNET:
+    CHANNELS: 32
+    DROPOUT: 0.0
+    IN_CHANNELS: 2
+    NORMALIZE: false
+    NUM_POOL_LAYERS: 4
+    OUT_CHANNELS: 2
+  NORMALIZER:
+    KEYWORDS: []
+    NAME: TopMagnitudeNormalizer
+  RECON_LOSS:
+    NAME: l1
+    RENORMALIZE_DATA: false
+SOLVER:
+  OPTIMIZER: Adam
+  LR_SCHEDULER_NAME: ""
+  BASE_LR: 0.001
+  BIAS_LR_FACTOR: 1.0
+  CHECKPOINT_PERIOD: -10
+  GAMMA: 0.1
+  GRAD_ACCUM_ITERS: 1
+  MAX_ITER: 80000
+  MOMENTUM: 0.9
+  TEST_BATCH_SIZE: 1
+  TRAIN_BATCH_SIZE: 16
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_BIAS: 0.0001
+  WEIGHT_DECAY_NORM: 0.0
+TEST:
+  EVAL_PERIOD: -10
+  VAL_METRICS:
+    RECON: ("psnr", "psnr_scan", "psnr_mag", "psnr_mag_scan", "nrmse", "nrmse_scan", "nrmse_mag", "nrmse_mag_scan", "ssim (Wang)", "ssim (Wang)_scan", "mae", "mae_scan")
+  VAL_AS_TEST: true
+  FLUSH_PERIOD: 0
+  CALCULATE_PIXEL_VARIANCE: false
+TIME_SCALE: "iter"
+SEED: 1000
+VIS_PERIOD: 100
+VERSION: 1
+CUDNN_BENCHMARK: false

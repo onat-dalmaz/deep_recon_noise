@@ -1,0 +1,9 @@
+_BASE_: "unrolled.yaml"
+MODEL:
+  META_ARCHITECTURE: "CGUnrolledCNN"
+  UNROLLED:
+    STEP_SIZES: (0.1,)
+    DC:
+      MAX_ITER: 1
+      EPS: 1e-2
+OUTPUT_DIR: f"results://mri-recon/fastmri-brain-mini/modl/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/step_size{MODEL.UNROLLED.STEP_SIZES[0]}/"

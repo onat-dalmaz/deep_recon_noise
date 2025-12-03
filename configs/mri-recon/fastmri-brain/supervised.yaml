@@ -1,0 +1,10 @@
+_BASE_: "base.yaml"
+DESCRIPTION:
+  BRIEF: f"Supervised Training (U-Net) @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x w/ {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans -- fastMRI Brain 3T AXT2, {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, sigma={MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"fastmri-brain-mini/supervised/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - supervised
+  - fastmri_brain_mini
+OUTPUT_DIR: f"results://mri-recon/fastmri-brain-mini/unet/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"

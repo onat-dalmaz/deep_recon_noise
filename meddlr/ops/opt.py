@@ -46,6 +46,8 @@ def conjgrad(
 
     assert cplx.is_complex(x)
 
+    # print(mu)
+
     r = b - (A_op(x) + mu * x)
     p = r
 

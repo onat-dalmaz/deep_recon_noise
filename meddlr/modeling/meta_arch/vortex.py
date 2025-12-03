@@ -58,6 +58,8 @@ class VortexModel(nn.Module):
         super().__init__()
 
         self.model = model
+        print(self.model)
+        self.model.method_name = "VORTEX"
         self.augmentor = augmentor
         self.use_base_grad = False  # Keep gradient for base images in transform.
         self.use_supervised_consistency = use_supervised_consistency
@@ -130,13 +132,14 @@ class VortexModel(nn.Module):
                 data = tv_utils.make_grid(data, nrow=1, padding=1, normalize=True, scale_each=True)
                 storage.put_image("train_aug/{}".format(name), data.numpy(), data_format="CHW")
 
-    def forward(self, inputs):
+    def forward(self, inputs,idx=0):
+
         if not self.training:
             assert (
                 "unsupervised" not in inputs
             ), "unsupervised inputs should not be provided in eval mode"
             inputs = inputs.get("supervised", inputs)
-            return self.model(inputs)
+            return self.model(inputs,idx=idx)
 
         vis_training = False
         if self.training and self.vis_period > 0:
@@ -149,6 +152,8 @@ class VortexModel(nn.Module):
         if inputs_supervised is None and inputs_unsupervised is None:
             raise ValueError("Examples not formatted in the proper way")
         output_dict = {}
+
+        # print(inputs_supervised.keys())
 
         # Recon
         if inputs_supervised is not None:
@@ -179,11 +184,13 @@ class VortexModel(nn.Module):
                 target = inputs_unsupervised.get("target", None)
                 pred_base = pred_base["pred"]
             inputs_consistency_aug, pred_base = self.augment(inputs_consistency, pred_base)
+            # print(self.model)
             pred_aug = self.model(inputs_consistency_aug, return_pp=True)
             if "target" in pred_aug:
                 del pred_aug["target"]
             pred_aug["target"] = pred_base.detach()
             output_dict["consistency"] = pred_aug
+            print(pred_aug.keys())
             if vis_training:
                 self.visualize_aug_training(
                     inputs_consistency["kspace"],
@@ -192,7 +199,7 @@ class VortexModel(nn.Module):
                     pred_base,
                     target=target,
                 )
-
+        print(output_dict.keys())
         return output_dict
 
     @classmethod

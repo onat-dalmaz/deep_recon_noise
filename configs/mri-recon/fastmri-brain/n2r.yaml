@@ -1,0 +1,38 @@
+_BASE_: "base.yaml"
+DESCRIPTION:
+  BRIEF: f"Noise2Recon (U-Net) @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x w/ {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans -- fastMRI Brain 3T AXT2, {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, sigma={MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"fastmri-brain-mini/n2r/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - noise2recon
+  - fastmri_brain_mini
+OUTPUT_DIR: f"results://noise2recon/fastmri-brain-mini/n2r/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+MODEL:
+  META_ARCHITECTURE: N2RModel
+  N2R:
+    META_ARCHITECTURE: UnetModel
+    USE_SUPERVISED_CONSISTENCY: false
+  CONSISTENCY:
+    AUG:
+      NOISE:
+        MASK:
+          RHO: 1.0
+        SCHEDULER:
+          WARMUP_ITERS: 0
+          WARMUP_METHOD: ''
+        STD_DEV:
+        - 0.2
+        - 0.5
+    LOSS_NAME: "l1"
+    LOSS_WEIGHT: 0.1
+DATALOADER:
+  SAMPLER_TRAIN: AlternatingGroupSampler  # TODO: Toggle this to "GroupSampler" turn off alternate sampling
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 266  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 0  # TODO: Fill in this number
+    NUM_VAL: 50
+    SEED: 1000

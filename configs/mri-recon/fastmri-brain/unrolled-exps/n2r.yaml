@@ -1,0 +1,40 @@
+# Noise2Recon with supervised consistency.
+_BASE_: "../templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"Noise2Recon (Unrolled) -- fastmri 2D multi-coil brain @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x, {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL} total scans, {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans, {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, sigma={MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}, sup_cons={MODEL.N2R.USE_SUPERVISED_CONSISTENCY}, noise aug={AUG_TRAIN.USE_NOISE}, p={AUG_TRAIN.NOISE_P}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"fastmri-brain-mini/n2r-unrolled/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/rho={MODEL.CONSISTENCY.AUG.NOISE.MASK.RHO}--loss={MODEL.RECON_LOSS.NAME}--share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - unrolled
+  - fastmri_brain_mini
+  - noise2recon
+OUTPUT_DIR: f"results://noise2recon/fastmri-brain-mini/n2r/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}_block-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}step/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled_1"
+MODEL:
+  META_ARCHITECTURE: N2RModel
+  N2R:
+    META_ARCHITECTURE: GeneralizedUnrolledCNN
+    USE_SUPERVISED_CONSISTENCY: false  # Use consistency with supervised examples.
+  CONSISTENCY:
+    AUG:
+      NOISE:
+        MASK:
+          RHO: 1.0  # Based on hyperparameter search
+        STD_DEV: (0.2, 0.5)  # Range of noise to sample from - NOTE: We do not do a hyperparameter search here
+    LOSS_NAME: k_l1  # Based on hyperparameter search
+  RECON_LOSS:
+    NAME: k_l1  # Based on hyperparameter search
+    RENORMALIZE_DATA: false
+DATALOADER:
+  SAMPLER_TRAIN: AlternatingGroupSampler  # TODO: Toggle this to "GroupSampler" turn off alternate sampling
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 54  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 50  # TODO: Fill in this number
+    NUM_VAL: -1
+    SEED: 1000
+SOLVER:
+  MAX_ITER: 80000
+VERSION: 1

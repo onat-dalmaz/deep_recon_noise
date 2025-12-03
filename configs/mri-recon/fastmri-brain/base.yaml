@@ -1,0 +1,119 @@
+# Noise2Recon with supervised consistency.
+DESCRIPTION:
+  BRIEF: ""
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: ""
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - noise2recon
+  - supervised_consistency
+  - fastmri_brain_mini
+OUTPUT_DIR: ""
+AUG_TEST:
+  UNDERSAMPLE:
+    ACCELERATIONS: ()  # TODO: Fill this in
+AUG_TRAIN:
+  NOISE_P: 0.2
+  USE_NOISE: false
+  UNDERSAMPLE:
+    ACCELERATIONS: ()  # TODO: Fill this in
+    CALIBRATION_SIZE: 20  # TODO: Fill this in
+    CENTER_FRACTIONS: []
+    NAME: PoissonDiskMaskFunc
+CUDNN_BENCHMARK: false
+DATALOADER:
+  NUM_WORKERS: 2
+  DATA_KEYS: (("target", "jsense-8-cf=4/target"), ("maps", "jsense-8-cf=4/maps"))
+  FILTER:
+    BY: (("acquisition", "AXT2"), ("systemFieldStrength_T", 2.8936))
+  SAMPLER_TRAIN: GroupSampler  # TODO: Toggle this to "GroupSampler" turn off alternate sampling
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  GROUP_SAMPLER:
+    BATCH_BY: ("receiverChannels", "inplane_shape")
+    AS_BATCH_SAMPLER: True
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 54  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 0  # TODO: Fill in this number
+    NUM_VAL: 50
+    SEED: 1000
+DATASETS:
+  TRAIN: ("fastMRI_brain_multicoil_mini_v0.0.1_train",)
+  VAL: ("fastMRI_brain_multicoil_mini_v0.0.1_val",)
+  TEST: ("fastMRI_brain_multicoil_mini_v0.0.1_test",)
+MODEL:
+  META_ARCHITECTURE: "UnetModel"
+  CONSISTENCY:
+    AUG:
+      NOISE:
+        MASK:
+          RHO: 1.0
+        SCHEDULER:
+          WARMUP_ITERS: 0
+          WARMUP_METHOD: ''
+        STD_DEV:
+        - 0.2
+        - 0.5
+  DEVICE: cuda
+  NORMALIZER:
+    KEYWORDS: []
+    NAME: TopMagnitudeNormalizer
+  RECON_LOSS:
+    NAME: l1
+    RENORMALIZE_DATA: false
+  UNET:
+    BLOCK_ORDER:
+    - conv
+    - relu
+    - conv
+    - relu
+    - batchnorm
+    - dropout
+    CHANNELS: 32
+    DROPOUT: 0.0
+    IN_CHANNELS: 2
+    NORMALIZE: false
+    NUM_POOL_LAYERS: 4
+    OUT_CHANNELS: 2
+SEED: 1000
+SOLVER:
+  BASE_LR: 0.001
+  BIAS_LR_FACTOR: 1.0
+  CHECKPOINT_PERIOD: 2000
+  GAMMA: 0.1
+  GRAD_ACCUM_ITERS: 2
+  LR_SCHEDULER_NAME: ''
+  MAX_ITER: 80000
+  MOMENTUM: 0.9
+  OPTIMIZER: Adam
+  STEPS: []
+  TEST_BATCH_SIZE: 16
+  TRAIN_BATCH_SIZE: 12
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 1000
+  WARMUP_METHOD: linear
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_BIAS: 0.0001
+  WEIGHT_DECAY_NORM: 0.0
+TEST:
+  EVAL_PERIOD: 2000
+  EXPECTED_RESULTS: []
+  FLUSH_PERIOD: -10
+  VAL_AS_TEST: true
+  VAL_METRICS:
+    RECON:
+    - psnr
+    - psnr_scan
+    - psnr_mag
+    - psnr_mag_scan
+    - nrmse
+    - nrmse_scan
+    - nrmse_mag
+    - nrmse_mag_scan
+    - ssim (Wang)
+    - mae
+    - mae_scan
+TIME_SCALE: iter
+VERSION: 1
+VIS_PERIOD: 100

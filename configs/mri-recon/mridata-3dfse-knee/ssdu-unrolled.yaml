@@ -1,0 +1,26 @@
+_BASE_: "unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"SSDU Unrolled reconstruction baseline @ training acceleration {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS} - {MODEL.UNROLLED.NUM_UNROLLED_STEPS} unrolled, {MODEL.UNROLLED.NUM_RESBLOCKS} resblocks, {MODEL.UNROLLED.NUM_FEATURES} features, {MODEL.RECON_LOSS.NAME} loss, lr={SOLVER.BASE_LR}"
+  TAGS: ("recon", "mridataknee2019", "unrolled", "ssdu")
+  PROJECT_NAME: "ss_recon"
+DATALOADER:
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 14
+    NUM_UNDERSAMPLED: 14  # TODO: Change value to control number of undersampled scans.
+MODEL:
+  META_ARCHITECTURE: "SSDUModel"
+  SSDU:
+    META_ARCHITECTURE: "GeneralizedUnrolledCNN"
+    MASKER:
+      PARAMS:
+        p: 1.0
+        rhos: 0.2  # Default value in SSDU code
+        kind: "uniform"  # Choices: ["uniform", "gaussian"]
+        per_example: True  # Mask each kspace differently
+        std_scale: 4  # Default value in SSDU code
+  RECON_LOSS:
+    NAME: "k_l1_l2_sum_normalized"
+    RENORMALIZE_DATA: False
+VERSION: 1
+OUTPUT_DIR: f"results://mri-recon/mridata-3dfse-knee/ssdu_{MODEL.UNROLLED.NUM_UNROLLED_STEPS}/{AUG_TRAIN.UNDERSAMPLE.NAME}/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/"
+

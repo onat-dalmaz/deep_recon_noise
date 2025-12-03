@@ -54,6 +54,9 @@ class SSDUModel(nn.Module):
         """
         super().__init__()
         self.model = model
+        self.model
+        self.model.method_name = "SSDU"
+
         self.masker = masker
         self.augmentor = augmentor
         # Visualization done by this model
@@ -147,7 +150,7 @@ class SSDUModel(nn.Module):
                 )
                 storage.put_image("ssdu/{}".format(name), data.cpu().numpy(), data_format="CHW")
 
-    def forward(self, inputs):
+    def forward(self, inputs,idx=0,return_pp=False):
         if not self.training:
             assert (
                 "unsupervised" not in inputs
@@ -166,7 +169,7 @@ class SSDUModel(nn.Module):
             dc_mask = (mask + edge_mask).bool().to(mask.dtype)
             inputs["mask"] = dc_mask
             # inputs["postprocessing_mask"] = dc_mask - mask
-            return self.model(inputs)
+            return self.model(inputs,idx=idx)
 
         storage = get_event_storage()
         vis_training = self.training and self.vis_period > 0 and storage.iter % self.vis_period == 0
@@ -243,7 +246,6 @@ class SSDUModel(nn.Module):
                             ],
                         }
                     )
-
         return outputs
 
     @classmethod

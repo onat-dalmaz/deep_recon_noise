@@ -45,6 +45,7 @@ class N2RModel(nn.Module):
         """
         super().__init__()
         self.model = model
+        self.model.method_name = "N2R"
 
         # Visualization done by this model.
         # If sub-model is SSDU, we allow SSDU to log images
@@ -77,12 +78,13 @@ class N2RModel(nn.Module):
                 with additive masked complex Gaussian noise.
         """
         kspace = inputs["kspace"].clone()
-        aug_kspace = self.noiser(kspace, clone=False)
+        aug_kspace,masked_noise = self.noiser(kspace, clone=False)
 
         inputs = {
             k: nested_apply(v, lambda _v: _v.clone()) for k, v in inputs.items() if k != "kspace"
         }
         inputs["kspace"] = aug_kspace
+        inputs["noise"] = masked_noise
         return inputs
 
     @torch.no_grad()
@@ -170,13 +172,13 @@ class N2RModel(nn.Module):
 
         return {"base": inputs_consistency, "aug": inputs_consistency_aug}
 
-    def forward(self, inputs):
+    def forward(self, inputs,idx=0):
         if not self.training:
             assert (
                 "unsupervised" not in inputs
             ), "unsupervised inputs should not be provided in eval mode"
             inputs = inputs.get("supervised", inputs)
-            return self.model(inputs)
+            return self.model(inputs,idx=idx)
 
         storage = get_event_storage()
         vis_training = self.training and self.vis_period > 0 and storage.iter % self.vis_period == 0

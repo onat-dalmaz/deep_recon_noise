@@ -1,0 +1,79 @@
+# Template for unrolled network experiments with mridata.
+# CUDNN_BENCHMARK: false
+DATASETS:
+  TRAIN: ("fastMRI_brain_multicoil_mini_v0.0.1_train",)
+  VAL: ("fastMRI_brain_multicoil_mini_v0.0.1_val",)
+  TEST: ("fastMRI_brain_multicoil_mini_v0.0.1_test",)
+DATALOADER:
+  NUM_WORKERS: 1
+  DATA_KEYS: (("target", "jsense-8-cf=8/target"), ("maps", "jsense-8-cf=8/maps"))  # this will change based on acceleration
+  FILTER:
+    BY: (("acquisition", "AXT2"), ("systemFieldStrength_T", 2.8936))
+  SAMPLER_TRAIN: GroupSampler  # TODO: Toggle this to "GroupSampler" turn off alternate sampling
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  GROUP_SAMPLER:
+    BATCH_BY: ("receiverChannels", "inplane_shape")
+    AS_BATCH_SAMPLER: True
+  DROP_LAST: true
+  PREFETCH_FACTOR: 2
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 20  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 0  # TODO: Fill in this number
+    NUM_VAL: -1
+    SEED: 1000
+AUG_TEST:
+  UNDERSAMPLE:
+    ACCELERATIONS: ()  # TODO: Fill this in
+AUG_TRAIN:
+  UNDERSAMPLE:
+    ACCELERATIONS: ()  # TODO: Fill this in
+    CALIBRATION_SIZE: 20  # TODO: Fill this in
+    CENTER_FRACTIONS: []
+    NAME: PoissonDiskMaskFunc
+MODEL:
+  DEVICE: cuda
+  UNROLLED:
+    NUM_UNROLLED_STEPS: 8
+    NUM_RESBLOCKS: 2
+    NUM_FEATURES: 128
+    DROPOUT: 0.
+    STEP_SIZES: (0.0,)
+    CONV_BLOCK:
+      ACTIVATION: "relu"
+      NORM: "none"
+      ORDER: ("act", "conv")
+  NORMALIZER:
+    KEYWORDS: []
+    NAME: TopMagnitudeNormalizer
+  # The U-Net architecture will only be used if the MODEL.UNROLLED.BLOCK_ARCHITECTURE is set to "UNetModel"
+  UNET:
+    BLOCK_ORDER: ("conv", "relu", "conv", "relu", "batchnorm", "dropout")
+    CHANNELS: 32
+    DROPOUT: 0.0
+    IN_CHANNELS: 2
+    NORMALIZE: false
+    NUM_POOL_LAYERS: 4
+    OUT_CHANNELS: 2
+SOLVER:
+  OPTIMIZER: "Adam"
+  LR_SCHEDULER_NAME: ""
+  CHECKPOINT_PERIOD: 5000
+  GAMMA: 0.1
+  TRAIN_BATCH_SIZE: 1
+  GRAD_ACCUM_ITERS: 4
+  TEST_BATCH_SIZE: 12
+  MAX_ITER: 80000
+  BASE_LR: 1e-4
+TEST:
+  EVAL_PERIOD: 5000
+  VAL_METRICS:
+    RECON: ("psnr", "psnr_scan", "psnr_mag", "psnr_mag_scan", "nrmse", "nrmse_scan", "nrmse_mag", "nrmse_mag_scan", "ssim (Wang)", "ssim (Wang)_scan", "mae", "mae_scan")
+  VAL_AS_TEST: true
+  FLUSH_PERIOD: 0
+TIME_SCALE: "iter"
+SEED: 1000
+VIS_PERIOD: 100
+VERSION: 1
+CUDNN_BENCHMARK: false

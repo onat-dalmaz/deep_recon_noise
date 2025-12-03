@@ -1,0 +1,33 @@
+# Basic testing config for Compressed Sensing (CS) Reconstruction.
+# NOTE: CS can only be used at evaluation time.
+# Run this config with eval_net.py for testing.
+_BASE_: "templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: "Compressed Sensing hyperparameter tuning - {AUG_TEST.UNDERSAMPLE.ACCELERATIONS}x, lambda={MODEL.CS.REGULARIZATION}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"fastmri-brain-mini/cs-hyperparam/{AUG_TEST.UNDERSAMPLE.ACCELERATIONS}x/lambda={MODEL.CS.REGULARIZATION}"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - compressed_sensing
+  - cs
+  - hyperparam_search
+  - fastmri_brain_mini
+OUTPUT_DIR: f"results://noise2recon/fastmri-brain-mini/hyperparam-search/compressed-sensing-v2/{AUG_TEST.UNDERSAMPLE.ACCELERATIONS}x/lambda={MODEL.CS.REGULARIZATION}"
+MODEL:
+  META_ARCHITECTURE: "CSModel"
+  CS:
+    MAX_ITER: 100
+    REGULARIZATION: 0.06  # Change this value
+DATASETS:
+  TEST: ("fastMRI_brain_multicoil_mini_v0.0.1_val",)  # use validation dataset for hyperparameter tuning
+DATALOADER:
+  NUM_WORKERS: 2  # for debugging purposes
+SOLVER:
+  TEST_BATCH_SIZE: 1
+AUG_TEST:
+  UNDERSAMPLE:
+    ACCELERATIONS: ()
+TEST:
+  FLUSH_PERIOD: -1
+TIME_SCALE: "iter"
+VERSION: 1

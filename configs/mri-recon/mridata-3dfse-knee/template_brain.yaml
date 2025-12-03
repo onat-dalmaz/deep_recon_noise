@@ -1,0 +1,50 @@
+# Shared/default properties between different configs for the 3d fse mridata knee dataset.
+AUG_TEST:
+  UNDERSAMPLE:
+    ACCELERATIONS: (2,)
+AUG_TRAIN:
+  UNDERSAMPLE:
+    ACCELERATIONS: (2,)
+    CALIBRATION_SIZE: 20
+    CENTER_FRACTIONS: []
+    NAME: PoissonDiskMaskFunc
+MODEL:
+  RECON_LOSS:
+    NAME: "l1"
+    RENORMALIZE_DATA: False
+DATASETS:
+  TRAIN: ("fastMRI_brain_multicoil_mini_v0.0.1_train",)
+  VAL: ("fastMRI_brain_multicoil_mini_v0.0.1_val",)
+  TEST: ("fastMRI_brain_multicoil_mini_v0.0.1_test",)
+DATALOADER:
+  NUM_WORKERS: 4
+  DATA_KEYS: (("target", "jsense-8-cf=4/target"), ("maps", "jsense-8-cf=4/maps"))
+  FILTER:
+    BY: (("acquisition", "AXT2"), ("systemFieldStrength_T", 2.8936))
+  SAMPLER_TRAIN: GroupSampler  # TODO: Toggle this to "GroupSampler" turn off alternate sampling
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  GROUP_SAMPLER:
+    BATCH_BY: ("receiverChannels", "inplane_shape")
+    AS_BATCH_SAMPLER: True
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 10  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 0  # TODO: Fill in this number
+    NUM_VAL: 50
+    SEED: 1000
+SOLVER:
+  OPTIMIZER: "Adam"
+  LR_SCHEDULER_NAME: ""
+  CHECKPOINT_PERIOD: 10  # Checkpoint every 10 epochs
+  MAX_ITER: 200  # Max number of epochs to train for
+TEST:
+  EVAL_PERIOD: 10  # Run validation every 10 epochs
+  VAL_METRICS:
+    RECON: ("psnr", "psnr_scan", "psnr_mag", "psnr_mag_scan", "nrmse", "nrmse_scan", "nrmse_mag", "nrmse_mag_scan", "ssim (Wang)")
+  CALCULATE_PIXEL_VARIANCES: False
+  VARIANCES_LIST: (0,120)
+TIME_SCALE: "epoch"
+SEED: 1000
+VIS_PERIOD: -400  # save images every 400 iterations
+VERSION: 1

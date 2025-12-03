@@ -1,0 +1,16 @@
+_BASE_: "template.yaml"
+# MODEL configuration
+MODEL:
+  META_ARCHITECTURE: "ResViTModel"  # Changed from "UnetModel" to "ArtViTModel"
+  
+  RESVIT:  # New block for ArtViTModel-specific configurations
+    CONFIG_NAME: "Res-ViT-B_16"  # Name of the transformer configuration (ensure it exists in CONFIGS)
+    INPUT_DIM: 2  # Number of input channels (as per original UNET.IN_CHANNELS)
+    IMG_SIZE: (320,256)  # Size of the input images (adjust based on your dataset)
+    OUTPUT_DIM: 2  # Number of output channels (as per original UNET.OUT_CHANNELS)
+    VIS: false  # Set to true if you need to visualize attention weights
+SOLVER:
+  TRAIN_BATCH_SIZE: 16
+  TEST_BATCH_SIZE: 1
+  BASE_LR: 1e-3
+OUTPUT_DIR: f"results://mri-recon/mridata-3dfse-knee/resvit/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"

@@ -1,0 +1,67 @@
+_BASE_: "template.yaml"
+DESCRIPTION:
+  BRIEF: f"VORTEX-SS Unrolled reconstruction baseline @ training acceleration {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS} - {MODEL.UNROLLED.NUM_UNROLLED_STEPS} unrolled, {MODEL.UNROLLED.NUM_RESBLOCKS} resblocks, {MODEL.UNROLLED.NUM_FEATURES} features, {MODEL.RECON_LOSS.NAME} loss, lr={SOLVER.BASE_LR}"
+  TAGS: ("recon", "raw-data-track", "unrolled", "mridata", "vortex_ss")
+  PROJECT_NAME: "ss_recon"
+  EXP_NAME: f"mridata/vortex_unrolled/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"
+OUTPUT_DIR: f"results://vortex-ss/mridata/vortex_unrolled/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"
+DATALOADER:
+  SAMPLER_TRAIN: ""  # Use random sampler here, because everything is undersampled
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 14
+    NUM_UNDERSAMPLED: 13  # All scans are undersampled.
+MODEL:
+  META_ARCHITECTURE: "VortexModel"
+  UNROLLED:
+    STEP_SIZES: (-2,)
+  A2R:
+    # META_ARCHITECTURE: SSDUModel
+    USE_SUPERVISED_CONSISTENCY: True  # Use A2R consistency on supervised examples - no supervised examples in fully self-supervised scenario
+    # EDGE_DC: True
+  CONSISTENCY:
+    AUG:
+      MRI_RECON:
+        SCHEDULER_P:
+          IGNORE: false
+        TRANSFORMS:
+        - name: RandomMRIMotion
+          p: 1.0
+        #   scheduler:
+        #     name: WarmupTF
+        #     params:
+        #     - std_devs
+        #     warmup_iters: 40000
+        #     warmup_method: linear
+          std_devs:
+          - 0.2
+          - 0.5
+        - name: RandomNoise
+          p: 1.0
+          # scheduler:
+          #   name: WarmupTF
+          #   params:
+          #   - std_devs
+          #   warmup_iters: -10000
+          #   warmup_method: linear
+          std_devs:
+          - 0.2
+          - 0.5
+          use_mask: true
+    LOSS_NAME: k_l1_l2_sum_normalized
+    LOSS_WEIGHT: 0.05
+  SSDU:
+    META_ARCHITECTURE: "GeneralizedUnrolledCNN"
+    MASKER:
+      PARAMS:
+        p: 1.0
+        rhos: 0.2  # Default value in SSDU code
+        kind: "uniform"  # Choices: ["uniform", "gaussian"]
+        per_example: true  # Mask each kspace differently
+        std_scale: 4  # Default value in SSDU code
+  RECON_LOSS:
+    NAME: "k_l1_l2_sum_normalized"
+    RENORMALIZE_DATA: False
+VERSION: 1

@@ -1,0 +1,76 @@
+# ART-ViT Configuration File
+# This configuration replaces the original U-Net setup with the ArtViTModel.
+
+DATASETS:
+  TRAIN: ("mridata_knee_2019_train",)
+  VAL: ("mridata_knee_2019_val",)
+  TEST: ("mridata_knee_2019_test",)
+
+DATALOADER:
+  NUM_WORKERS: 12
+  DROP_LAST: true
+  PREFETCH_FACTOR: 2
+  SUBSAMPLE_TRAIN:
+    SEED: 1000
+    NUM_VAL: -1
+
+MODEL:
+  DEVICE: cuda
+  META_ARCHITECTURE: ArtViTModel  # Changed from UnetModel to ArtViTModel
+
+  ARTVIT:  # New block for ArtViTModel-specific configurations
+    CONFIG_NAME: "Res-ViT-B_16"  # Name of the transformer configuration
+    INPUT_DIM: 2  # Number of input channels (e.g., 2 for certain MRI data)
+    IMG_SIZE: 224  # Size of the input images (adjust as per your dataset)
+    OUTPUT_DIM: 2  # Number of output channels (e.g., for segmentation masks)
+    VIS: false  # Set to true if you need to visualize attention weights
+
+  NORMALIZER:
+    KEYWORDS: []
+    NAME: TopMagnitudeNormalizer  # Remains unchanged; adjust if necessary
+
+  RECON_LOSS:
+    NAME: l1  # Type of reconstruction loss
+    RENORMALIZE_DATA: false  # Whether to renormalize data before loss computation
+
+SOLVER:
+  OPTIMIZER: Adam  # Optimization algorithm
+  LR_SCHEDULER_NAME: ""  # Learning rate scheduler (if any)
+  BASE_LR: 0.001  # Base learning rate
+  BIAS_LR_FACTOR: 1.0  # Learning rate factor for bias parameters
+  CHECKPOINT_PERIOD: -10  # Checkpointing frequency
+  GAMMA: 0.1  # Learning rate decay factor
+  GRAD_ACCUM_ITERS: 1  # Gradient accumulation steps
+  MAX_ITER: 80000  # Maximum number of training iterations
+  MOMENTUM: 0.9  # Momentum factor (if applicable)
+  TEST_BATCH_SIZE: 1  # Batch size during testing
+  TRAIN_BATCH_SIZE: 16  # Batch size during training
+  WEIGHT_DECAY: 0.0001  # Weight decay (L2 regularization) for weights
+  WEIGHT_DECAY_BIAS: 0.0001  # Weight decay for bias parameters
+  WEIGHT_DECAY_NORM: 0.0  # Weight decay for normalization layers
+
+TEST:
+  EVAL_PERIOD: -10  # Evaluation frequency
+  VAL_METRICS:  # Metrics to evaluate during validation
+    RECON: (
+      "psnr", 
+      "psnr_scan", 
+      "psnr_mag", 
+      "psnr_mag_scan", 
+      "nrmse", 
+      "nrmse_scan", 
+      "nrmse_mag", 
+      "nrmse_mag_scan", 
+      "ssim (Wang)", 
+      "ssim (Wang)_scan", 
+      "mae", 
+      "mae_scan")
+  VAL_AS_TEST: true  # Whether to treat validation as test
+  FLUSH_PERIOD: 0  # Flush logs periodically
+  CALCULATE_PIXEL_VARIANCE: false  # Whether to calculate pixel-wise variance
+
+TIME_SCALE: "iter"  # Time scaling for logging
+SEED: 1000  # Random seed for reproducibility
+VIS_PERIOD: 100  # Visualization frequency
+VERSION: 1  # Version number
+CUDNN_BENCHMARK: false  # Whether to enable CuDNN benchmark for performance

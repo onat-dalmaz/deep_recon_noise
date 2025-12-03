@@ -161,7 +161,7 @@ class PoissonDiskMaskFunc(CacheableMaskMixin, MaskFunc):
         accelerations: Union[int, Tuple[int, int]],
         calib_size: Union[int, Tuple[int, int]],
         center_fractions: Union[float, Tuple[float, float]] = None,
-        max_attempts: int = 30,
+        max_attempts: int = 10,
         crop_corner: bool = True,
         module: str = "internal",
     ):
@@ -178,6 +178,8 @@ class PoissonDiskMaskFunc(CacheableMaskMixin, MaskFunc):
         self.module = module
 
     def __call__(self, out_shape, seed=None, acceleration=None):
+        #monitor the shape of the mask
+        # print('mask shape:', out_shape)
         # Design parameters for mask
         nky = out_shape[1]
         nkz = out_shape[2]
@@ -192,7 +194,9 @@ class PoissonDiskMaskFunc(CacheableMaskMixin, MaskFunc):
         else:
             shape = (nky, nkz)
             transpose = False
-
+        # print(self.module)
+        #print max attempts
+        # print('max attempts:', self.max_attempts)
         # Issue #2: Due to some optimization reasons, using the internal
         # poisson disc module has been faster than using sigpy's
         # default one. In many cases, the call to sigpy hangs.
@@ -213,7 +217,7 @@ class PoissonDiskMaskFunc(CacheableMaskMixin, MaskFunc):
                 acceleration,
                 calib=self.calib_size,
                 dtype=np.float32,
-                seed=seed,
+                #seed=seed,
                 max_attempts=self.max_attempts,
                 crop_corner=self.crop_corner,
             )
@@ -281,40 +285,39 @@ class PoissonDiskMaskFunc(CacheableMaskMixin, MaskFunc):
 class RandomMaskFunc1D(MaskFunc):
     """
     RandomMaskFunc creates a sub-sampling mask of a given shape.
-    The mask selects a subset of columns from the input k-space data. If the k-space data has N
-    columns, the mask picks out:
-        1. N_low_freqs = (N * center_fraction) columns in the center corresponding to
-           low-frequencies
-        2. The other columns are selected uniformly at random with a probability equal to:
+    The mask selects a subset of *rows* from the input k-space data, instead of columns.
+
+    If the k-space data has N rows, the mask picks out:
+        1. N_low_freqs = (N * center_fraction) rows in the center
+           corresponding to low-frequencies
+        2. The other rows are selected uniformly at random with a probability equal to:
            prob = (N / acceleration - N_low_freqs) / (N - N_low_freqs).
-    This ensures that the expected number of columns selected is equal to (N / acceleration)
-    It is possible to use multiple center_fractions and accelerations, in which case one possible
-    (center_fraction, acceleration) is chosen uniformly at random each time the RandomMaskFunc
-    object is called.
+    This ensures that the expected number of rows selected is equal to (N / acceleration).
 
-    For example, if accelerations = [4, 8] and center_fractions = [0.08, 0.04], then there
-    is a 50% probability that 4-fold acceleration with 8% center fraction is selected and a 50%
-    probability that 8-fold acceleration with 4% center fraction is selected.
+    It is possible to use multiple `center_fractions` and `accelerations`, in which case
+    one possible (center_fraction, acceleration) is chosen uniformly at random each time
+    this object is called.
 
-    Adapted from https://github.com/facebookresearch/fastMRI/blob/master/common/subsample.py
+    Adapted from fastMRI’s RandomMaskFunc, modified to sample rows (dim=1) 
+    rather than columns (dim=2).
     """
 
     def __init__(self, accelerations, calib_size=None, center_fractions=None):
         """
         Args:
-            center_fractions (List[float]): Fraction of low-frequency columns to be retained.
-                If multiple values are provided, then one of these numbers is chosen uniformly
-                each time.
-            accelerations (List[int]): Amount of under-sampling. This should have the same length
-                as center_fractions. If multiple values are provided, then one of these is chosen
-                uniformly each time. An acceleration of 4 retains 25% of the columns, but they may
-                not be spaced evenly.
-            calib_size (List[int]): Calibration size for scans.
+            center_fractions (List[float]): Fraction of low-frequency rows to retain.
+                If multiple values are provided, one is chosen uniformly each time.
+            accelerations (List[int]): Amount of under-sampling. Should match
+                `center_fractions` in length. An acceleration of 4 retains ~25% 
+                of the rows, chosen randomly (plus any center rows).
+            calib_size (List[int]): Calibration size for scans. Only used if 
+                `center_fractions` is None. Exactly one of `calib_size` or 
+                `center_fractions` must be specified.
         """
         if not calib_size and not center_fractions:
             raise ValueError("Either calib_size or center_fractions must be specified.")
         if calib_size and center_fractions:
-            raise ValueError("Only one of calib_size or center_fractions can be specified")
+            raise ValueError("Only one of calib_size or center_fractions can be specified.")
 
         self.center_fractions = center_fractions
         self.calib_size = calib_size
@@ -323,22 +326,29 @@ class RandomMaskFunc1D(MaskFunc):
     def __call__(self, shape, seed=None, acceleration=None):
         """
         Args:
-            shape (iterable[int]): The shape of the mask to be created. The shape should have
-                at least 3 dimensions. Samples are drawn along the second last dimension.
-            seed (int, optional): Seed for the random number generator. Setting the seed
-                ensures the same mask is generated each time for the same shape.
+            shape (Iterable[int]): The shape of the mask to be created. Must have
+                at least 3 dims (e.g. [B, num_rows, num_cols]). We will sample
+                along dim=1 (the “row” dimension).
+            seed (int, optional): Seed for the random number generator.
+            acceleration (int, optional): If provided, overrides the random 
+                selection from `self.accelerations`.
+
         Returns:
-            torch.Tensor: A mask of the specified shape.
+            torch.Tensor: A mask of the specified shape, undersampling along dim=1.
         """
         if len(shape) < 3:
-            raise ValueError("Shape should have 3 or more dimensions")
+            raise ValueError("Shape should have 3 or more dimensions, e.g. (B, H, W).")
 
         if seed is not None:
             np_state = np.random.get_state()
         rng = np.random.RandomState(seed) if seed is not None else self.rng
 
+        # Number of rows to sample, number of columns
+        # shape = (batch, num_rows, num_cols, [optional extras...])
         num_rows = shape[1]
         num_cols = shape[2]
+
+        # Decide which center_fraction and acceleration to use
         if self.center_fractions:
             if isinstance(self.center_fractions, Sequence):
                 choice = rng.randint(0, len(self.center_fractions))
@@ -346,22 +356,32 @@ class RandomMaskFunc1D(MaskFunc):
             else:
                 center_fraction = self.center_fractions
         else:
-            center_fraction = self.calib_size / num_cols
+            # center_fraction derived from calib_size if provided
+            center_fraction = self.calib_size / num_rows
+
         if acceleration is None:
             acceleration = self.choose_acceleration()
 
-        # Create the mask
-        num_low_freqs = int(round(num_cols * center_fraction))
-        prob = (num_cols / acceleration - num_low_freqs) / (num_cols - num_low_freqs)
-        mask = rng.uniform(size=num_cols) < prob
-        pad = (num_cols - num_low_freqs + 1) // 2
-        mask[pad : pad + num_low_freqs] = True
+        # Number of low-frequency rows to keep
+        num_low_freqs = int(round(num_rows * center_fraction))
+        # Probability of selecting each of the remaining rows
+        prob = (num_rows / acceleration - num_low_freqs) / (num_rows - num_low_freqs)
 
-        # Reshape the mask
+        # Randomly select rows
+        mask_1d = rng.uniform(size=num_rows) < prob
+        # Ensure the center region is always selected
+        pad = (num_rows - num_low_freqs + 1) // 2
+        mask_1d[pad : pad + num_low_freqs] = True
+
+        # Reshape mask to broadcast along the other dimensions
         mask_shape = [1 for _ in shape]
-        mask_shape[2] = num_cols
-        mask = mask.reshape(*mask_shape).astype(np.float32)
-        mask = np.concatenate([mask] * num_rows, axis=1)
+        mask_shape[1] = num_rows  # place our 1D mask in dim=1
+        mask_1d = mask_1d.reshape(*mask_shape).astype(np.float32)
+
+        # Broadcast this mask across the columns (dim=2)
+        # so that for each column, the same rows are chosen
+        mask = np.concatenate([mask_1d] * num_cols, axis=2)
+
         mask = torch.from_numpy(mask)
 
         if seed is not None:
@@ -378,51 +398,51 @@ class RandomMaskFunc1D(MaskFunc):
         return get_cartesian_edge_mask(kspace, dims=(1, 2), out_shape=out_shape)
 
 
-@MASK_FUNC_REGISTRY.register()
-class EquispacedMaskFunc1D(MaskFunc):
-    """
+# @MASK_FUNC_REGISTRY.register()
+# class EquispacedMaskFunc1D(MaskFunc):
+#     """
 
-    Adapted from https://github.com/facebookresearch/fastMRI/blob/master/common/subsample.py
-    """
+#     Adapted from https://github.com/facebookresearch/fastMRI/blob/master/common/subsample.py
+#     """
 
-    def __init__(self, accelerations, calib_size=None, center_fractions=None):
-        if not calib_size and not center_fractions:
-            raise ValueError("Either calib_size or center_fractions must be specified.")
-        if calib_size and center_fractions:
-            raise ValueError("Only one of calib_size or center_fractions can be specified")
-        assert not center_fractions, "Center fractions not supported for equispaced sampling."
+#     def __init__(self, accelerations, calib_size=None, center_fractions=None):
+#         if not calib_size and not center_fractions:
+#             raise ValueError("Either calib_size or center_fractions must be specified.")
+#         if calib_size and center_fractions:
+#             raise ValueError("Only one of calib_size or center_fractions can be specified")
+#         assert not center_fractions, "Center fractions not supported for equispaced sampling."
 
-        self.center_fractions = center_fractions
-        self.calib_size = calib_size
-        super().__init__(accelerations)
+#         self.center_fractions = center_fractions
+#         self.calib_size = calib_size
+#         super().__init__(accelerations)
 
-    def choose_acceleration(self) -> int:
-        # Accelerations for equispaced sampling must be an integer.
-        acc = super().choose_acceleration()
-        return int(round(acc))
+#     def choose_acceleration(self) -> int:
+#         # Accelerations for equispaced sampling must be an integer.
+#         acc = super().choose_acceleration()
+#         return int(round(acc))
 
-    def __call__(self, shape, seed: int = None, acceleration: int = None):
-        """
-        Args:
-            shape (iterable[int]): The shape of the mask to be created. The shape should have
-                at least 3 dimensions. Samples are drawn along the second last dimension.
-            seed (int, optional): Seed for the random number generator. Setting the seed
-                ensures the same mask is generated each time for the same shape.
-        Returns:
-            torch.Tensor: A mask of the specified shape.
-        """
-        if len(shape) < 3:
-            raise ValueError("Shape should have 3 or more dimensions")
+#     def __call__(self, shape, seed: int = None, acceleration: int = None):
+#         """
+#         Args:
+#             shape (iterable[int]): The shape of the mask to be created. The shape should have
+#                 at least 3 dimensions. Samples are drawn along the second last dimension.
+#             seed (int, optional): Seed for the random number generator. Setting the seed
+#                 ensures the same mask is generated each time for the same shape.
+#         Returns:
+#             torch.Tensor: A mask of the specified shape.
+#         """
+#         if len(shape) < 3:
+#             raise ValueError("Shape should have 3 or more dimensions")
 
-        calib = self.calib_size
-        if acceleration is None:
-            acceleration = self.choose_acceleration()
+#         calib = self.calib_size
+#         if acceleration is None:
+#             acceleration = self.choose_acceleration()
 
-        return equispaced_mask(shape, accel=acceleration, calib=calib, dim=1)
+#         return equispaced_mask(shape, accel=acceleration, calib=calib, dim=0)
 
-    def get_edge_mask(self, kspace: torch.Tensor, out_shape: Sequence[int] = None):
-        # TODO: dims should be configured based on the number of dimenions in the input.
-        return get_cartesian_edge_mask(kspace, dims=(1, 2), out_shape=out_shape)
+#     def get_edge_mask(self, kspace: torch.Tensor, out_shape: Sequence[int] = None):
+#         # TODO: dims should be configured based on the number of dimenions in the input.
+#         return get_cartesian_edge_mask(kspace, dims=(1, 2), out_shape=out_shape)
 
 
 @MASK_FUNC_REGISTRY.register()
@@ -433,8 +453,8 @@ class EquispacedMaskFunc2D(MaskFunc):
     """
 
     def __init__(self, accelerations, calib_size=None, center_fractions=None):
-        if not calib_size and not center_fractions:
-            raise ValueError("Either calib_size or center_fractions must be specified.")
+        # if not calib_size and not center_fractions:
+        #     raise ValueError("Either calib_size or center_fractions must be specified.")
         if calib_size and center_fractions:
             raise ValueError("Only one of calib_size or center_fractions can be specified")
         assert not center_fractions, "Center fractions not supported for equispaced sampling."
@@ -464,8 +484,8 @@ class EquispacedMaskFunc2D(MaskFunc):
         calib = self.calib_size
         if acceleration is None:
             acceleration = self.choose_acceleration()
-
-        return equispaced_mask(shape, accel=acceleration, calib=calib, dim=2)
+        
+        return equispaced_mask(shape, accel=acceleration, calib=calib, dim=1)
 
     def get_edge_mask(self, kspace: torch.Tensor, out_shape: Sequence[int] = None):
         # TODO: dims should be configured based on the number of dimenions in the input.
@@ -604,6 +624,7 @@ def _get_center(size: int) -> float:
     return size // 2 if size % 2 == 1 else size // 2 - 0.5
 
 
+
 def equispaced_mask(
     shape: Union[int, Tuple[int]],
     accel: int,
@@ -611,50 +632,41 @@ def equispaced_mask(
     calib: int = None,
     device=None,
     dtype=torch.float32,
-    dim: int = None,
+    dim: int = 1,
 ) -> torch.Tensor:
-    """Generate equispaced mask.
-
-    Args:
-        shape: Shape of the mask to generate.
-        accel: Acceleration factor.
-        offset: Offset of the mask.
-        calib: Size of the calibration region.
-        device: Device to place the mask on.
-        dtype: Data type of the mask.
-        dim: Dimension of undersampling.
-            For example, `dim=1` will generate a 1D undersampling mask.
-            If `None`, `dim` will be set to the length of `shape`.
-
-    Returns:
-        torch.Tensor: The mask.
     """
-    if isinstance(shape, int):
-        shape = (shape,)
-    if dim is None:
-        dim = len(shape)
-    if isinstance(offset, int):
-        offset = (offset,) * dim
-    if len(offset) != dim:
-        raise ValueError("offset must have the same length as shape")
-    if isinstance(calib, int):
-        calib = (calib,) * dim
+    Generate equispaced mask for undersampling in phase encoding direction.
+    """
+    # ... [initial argument processing remains unchanged]
 
-    # Perform masking on 1D tensor and reshape.
-    dim_shape = shape[-dim:]
-    offset = _flatten_offset(offset, dim_shape)
-    mask = torch.zeros(np.prod(dim_shape), dtype=dtype, device=device)
-    mask[offset::accel] = 1
-    mask = mask.reshape(dim_shape)
+    # Calculate mask for a single dimension and then reshape
+    dim_len = shape[dim]  # The length of the phase-encoding dimension
+    mask = torch.zeros(dim_len, dtype=dtype, device=device)
+    offset = offset if isinstance(offset, tuple) else (offset,)
 
-    # TODO: Add calibration region.
-    if calib is not None:
-        pad = ((d - c + 1) // 2 for d, c in zip(dim_shape, calib))
-        calib_sl = tuple(slice(p, p + c) for p, c in zip(pad, calib))
-        mask[(Ellipsis,) + calib_sl] = 1
+    # Apply offset for the phase-encoding dimension
+    # Ensure offset is within the valid range
+    phase_offset = offset[0] % accel
 
-    return mask.broadcast_to(shape)
+    # Masking with acceleration factor and offset
+    mask[phase_offset::accel] = 1
 
+    # If calibration region is specified
+    if calib:
+        # Ensure calib is within valid range
+        calib = min(calib, dim_len)
+        calib_start = (dim_len - calib) // 2
+        mask[calib_start:calib_start + calib] = 1
+
+    # Reshape mask to match input shape
+    mask_shape = [1] * len(shape)
+    mask_shape[dim] = dim_len
+    mask = mask.reshape(mask_shape)
+
+    # Broadcast mask to full input shape
+    mask = mask.expand(shape)
+
+    return mask
 
 def _flatten_offset(offset, shape):
     """Flatten the offset to a single integer."""

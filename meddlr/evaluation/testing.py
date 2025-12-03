@@ -254,6 +254,7 @@ def _metrics_from_x(metrics_file, criterion):
 def _metrics_from_json(metrics_file, criterion):
     metrics = []
     with open(metrics_file, "r") as f:
+        print(metrics_file )
         metrics = [json.loads(line.strip()) for line in f]
     metrics = [m for m in metrics if criterion in m or any(k.endswith(criterion) for k in m.keys())]
     is_metric_wrapped = criterion not in metrics[0]

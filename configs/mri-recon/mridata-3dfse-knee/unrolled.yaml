@@ -10,6 +10,12 @@ MODEL:
       ACTIVATION: "relu"
       NORM: "none"
       ORDER: ("act", "conv")
+AUG_TRAIN:
+  UNDERSAMPLE:
+    ACCELERATIONS: (2,)
+    CALIBRATION_SIZE: 20
+    CENTER_FRACTIONS: []
+    NAME: PoissonDiskMaskFunc
 SOLVER:
   OPTIMIZER: "Adam"
   LR_SCHEDULER_NAME: ""
@@ -17,5 +23,5 @@ SOLVER:
   GRAD_ACCUM_ITERS: 4
   TEST_BATCH_SIZE: 12
   BASE_LR: 1e-4
-OUTPUT_DIR: "results://mri-recon/mridata-3dfse-knee/unrolled"
+OUTPUT_DIR: f"results://mri-recon/mridata-3dfse-knee/unrolled_{MODEL.UNROLLED.NUM_UNROLLED_STEPS}/{AUG_TRAIN.UNDERSAMPLE.NAME}/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/"
 VERSION: 1

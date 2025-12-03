@@ -1,0 +1,15 @@
+# Noise2Recon with supervised consistency.
+_BASE_: "n2r.yaml"
+DESCRIPTION:
+  BRIEF: f"Noise2Recon + SupCons (U-Net) @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x w/ {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans -- fastMRI Brain 3T AXT2, {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, sigma={MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"n2r-ablations/fastmri-brain-mini/sup-cons/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - noise2recon
+  - supervised_consistency
+  - fastmri_brain_mini
+OUTPUT_DIR: f"results://noise2recon/fastmri-brain-mini/n2r-sup-cons/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+MODEL:
+  N2R:
+    USE_SUPERVISED_CONSISTENCY: true

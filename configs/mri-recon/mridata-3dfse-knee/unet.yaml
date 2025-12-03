@@ -10,6 +10,6 @@ MODEL:
     DROPOUT: 0.
 SOLVER:
   TRAIN_BATCH_SIZE: 16
-  TEST_BATCH_SIZE: 16
+  TEST_BATCH_SIZE: 1
   BASE_LR: 1e-3
-OUTPUT_DIR: "results://mri-recon/mridata-3dfse-knee/unet"
+OUTPUT_DIR: f"results://mri-recon/mridata-3dfse-knee/unet/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"

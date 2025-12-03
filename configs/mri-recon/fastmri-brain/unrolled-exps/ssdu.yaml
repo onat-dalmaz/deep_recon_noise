@@ -1,0 +1,35 @@
+# Implementation of SSDU in meddlr
+# Based on recommendations from SSDU codebase: https://github.com/byaman14/SSDU/tree/6561977a0088b2c8a59737a72df50d77b63e3bb9
+_BASE_: "../templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"SSDU Unrolled ({MODEL.UNROLLED.BLOCK_ARCHITECTURE} block, {MODEL.UNROLLED.NUM_UNROLLED_STEPS} steps) -- fastmri 2D muliti-coil brain @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x, {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL} total scans, {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans, loss={MODEL.RECON_LOSS.NAME}, rho={MODEL.SSDU.MASKER.PARAMS.rhos}, kind={MODEL.SSDU.MASKER.PARAMS.kind}, share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}"
+  EXP_NAME: f"fastmri-brain-mini/ssdu-unrolled/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/loss={MODEL.RECON_LOSS.NAME}--rho={MODEL.SSDU.MASKER.PARAMS.rhos}--kind={MODEL.SSDU.MASKER.PARAMS.kind}"
+  PROJECT_NAME: ss_recon
+  TAGS:
+  - unrolled
+  - fastmri_brain_mini
+  - ssdu
+DATALOADER:
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 54  # Total number of scans with these filtering parameters
+    NUM_UNDERSAMPLED: 54  # TODO: Fill in this number
+    NUM_VAL: -1
+    SEED: 1000
+OUTPUT_DIR: f"results://mri-recon/fastmri-brain-mini/ssdu-paper/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"
+MODEL:
+  META_ARCHITECTURE: "SSDUModel"
+  SSDU:
+    META_ARCHITECTURE: "GeneralizedUnrolledCNN"
+    MASKER:
+      PARAMS:
+        p: 1.0
+        rhos: 0.2  # Based on hyperparameter search
+        kind: "uniform"  # Choices: ["uniform", "gaussian"]
+        per_example: True
+        std_scale: 4  # Default value in SSDU code
+  RECON_LOSS:
+    NAME: "k_l1_l2_sum_normalized"  # Optimal value based on hyperparameter search
+    RENORMALIZE_DATA: False
+SOLVER:
+  MAX_ITER: 80000
+VERSION: 1

@@ -1,0 +1,75 @@
+# VORTEX Model for fastMRI 2D multi-coil brain data,
+# including motion-based consistency (with noise augmentation).
+_BASE_: "../templates/unrolled.yaml"
+
+DESCRIPTION:
+  BRIEF: >
+    f"VORTEX (Unrolled) -- fastmri 2D multi-coil brain @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x,
+    {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL} total scans,
+    {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans,
+    {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR},
+    bsz={SOLVER.TRAIN_BATCH_SIZE}, motion & noise consistency aug,
+    unrolled architecture."
+
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: >
+    f"fastmri-brain-mini/vortex-unrolled/
+    {MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_
+    {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/
+    {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/
+    share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}"
+
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+    - unrolled
+    - fastmri_brain_mini
+    - vortex
+
+OUTPUT_DIR: f"results://vortex/fastmri-brain-mini/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}_block-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}step/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled_1"
+
+MODEL:
+  META_ARCHITECTURE: VortexModel  # or whichever meta-arch name you use for VORTEX
+  A2R:
+    USE_SUPERVISED_CONSISTENCY: True  # Use consistency with supervised examples.
+
+  # Consistency / augmentation parameters
+  CONSISTENCY:
+    AUG:
+      MRI_RECON:
+        # We combine motion + noise for consistency augmentation
+        TRANSFORMS:
+          - name: RandomMRIMotion
+            p: 1.0
+            std_devs:
+              - 0.1
+              - 0.1
+          - name: RandomNoise
+            p: 1.0
+            std_devs:
+              - 0.1
+              - 0.1
+            use_mask: true
+
+    LOSS_NAME: "k_l1_l2_sum_normalized"  # e.g. L1 in k-space
+    # If you want a weight for the consistency loss:
+    # LOSS_WEIGHT: 0.05
+
+  RECON_LOSS:
+    NAME: "k_l1"  # same as consistency or you can do another
+    RENORMALIZE_DATA: false
+
+DATALOADER:
+  SAMPLER_TRAIN: "AlternatingGroupSampler"  # or "GroupSampler"
+  ALT_SAMPLER:
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 54        # total scans with these filtering parameters
+    NUM_UNDERSAMPLED: 1 # fill in actual number
+    NUM_VAL: -1
+    SEED: 1000
+
+SOLVER:
+  MAX_ITER: 80000
+VERSION: 1

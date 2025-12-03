@@ -58,9 +58,9 @@ _C.MODEL.UNROLLED.DROPOUT = 0.0
 _C.MODEL.UNROLLED.PADDING = ""
 # Step size for each unrolled block.
 # If only one element, the same step size is used for all blocks.
-_C.MODEL.UNROLLED.STEP_SIZES = (-2.0,)
+_C.MODEL.UNROLLED.STEP_SIZES = (-1.0,)
 # Whether to fix the step size or make it learnable.
-_C.MODEL.UNROLLED.FIX_STEP_SIZE = False
+_C.MODEL.UNROLLED.FIX_STEP_SIZE = True
 # Whether to share weights between each unrolled block.
 _C.MODEL.UNROLLED.SHARE_WEIGHTS = False
 # Kernel size
@@ -121,6 +121,8 @@ _C.MODEL.CONSISTENCY.AUG.NOISE.SCHEDULER.WARMUP_ITERS = 0
 _C.MODEL.CONSISTENCY.AUG.NOISE.MASK = CN()
 _C.MODEL.CONSISTENCY.AUG.NOISE.MASK.RHO = 1.0
 _C.MODEL.CONSISTENCY.AUG.MRI_RECON = _MRI_RECON_TFM.clone()
+# added covariance matrix path
+_C.MODEL.CONSISTENCY.AUG.NOISE.COV_MATRIX_PATH = "results/covariance_matrices/120_noise_covariance_matrix_0.05.npy"
 
 # Motion scheduler
 _C.MODEL.CONSISTENCY.AUG.MOTION.SCHEDULER = CN()
@@ -174,6 +176,15 @@ _C.MODEL.RESNET.CONV_BLOCK.NORM_AFFINE = False
 _C.MODEL.RESNET.CONV_BLOCK.ORDER = ("norm", "act", "drop", "conv")
 
 # -----------------------------------------------------------------------------
+# ResViT model - Transformer-based architecture with a single ART block
+# -----------------------------------------------------------------------------
+_C.MODEL.RESVIT = CN()
+_C.MODEL.RESVIT.CONFIG_NAME = "Res-ViT-20x16"  # Name of the transformer configuration
+_C.MODEL.RESVIT.INPUT_DIM = 2              # Number of input channels (e.g., MRI channels)
+_C.MODEL.RESVIT.IMG_SIZE = (320, 256)       # Input image size as [height, width]
+_C.MODEL.RESVIT.OUTPUT_DIM = 2             # Number of output channels (e.g., reconstructed MRI)
+_C.MODEL.RESVIT.VIS = False                 # Visualization flag for attention weights
+# -----------------------------------------------------------------------------
 # Denoising model
 # -----------------------------------------------------------------------------
 _C.MODEL.DENOISING = CN()
@@ -188,6 +199,15 @@ _C.MODEL.DENOISING.NOISE.USE_FULLY_SAMPLED_TARGET = True
 # Same as above, but at eval time (e.g. validation).
 # Defaults to :obj:`MODEL.DENOISING.NOISE.USE_FULLY_SAMPLED_TARGET`
 _C.MODEL.DENOISING.NOISE.USE_FULLY_SAMPLED_TARGET_EVAL = None
+
+# -----------------------------------------------------------------------------
+# CG-SENSE model
+#SENSE:
+    # MAX_ITER: 200
+    # REGULARIZATION: 0.005
+_C.MODEL.SENSE = CN()
+_C.MODEL.SENSE.MAX_ITER = 200
+_C.MODEL.SENSE.REGULARIZATION = 0.000
 
 # -----------------------------------------------------------------------------
 # Compressed Sensing (CS) model
@@ -339,33 +359,30 @@ _C.AUG_TEST.UNDERSAMPLE.ACCELERATIONS = (6,)
 # ---------------------------------------------------------------------------- #
 _C.SOLVER = CN()
 
+_C.SOLVER.OPTIMIZER = "Adam"
+
+# See meddlr/solver/build.py for LR scheduler options
+_C.SOLVER.LR_SCHEDULER_NAME = "WarmupMultiStepLR"
+
 _C.SOLVER.MAX_ITER = 20
+
 _C.SOLVER.BASE_LR = 1e-4
 
-# ============== Optimizer ==============
-_C.SOLVER.OPTIMIZER = "Adam"
 _C.SOLVER.MOMENTUM = 0.9
-# Beta values for optimizers (e.g. Adam).
-# If empty tuple, defaults to the default value for the optimizer.
-_C.SOLVER.BETAS = ()
+
 _C.SOLVER.WEIGHT_DECAY = 0.0001
 # The weight decay that's applied to parameters of normalization layers
 # (typically the affine transformation)
 _C.SOLVER.WEIGHT_DECAY_NORM = 0.0
-_C.SOLVER.WEIGHT_DECAY_BIAS = _C.SOLVER.WEIGHT_DECAY
-_C.SOLVER.BIAS_LR_FACTOR = 1.0
 
-# ============== Learning rate schedule r==============
-# See meddlr/solver/build.py for LR scheduler options
-_C.SOLVER.LR_SCHEDULER_NAME = "WarmupMultiStepLR"
 _C.SOLVER.GAMMA = 0.1
 # The iteration number to decrease learning rate by GAMMA.
 _C.SOLVER.STEPS = (30000,)
+
 _C.SOLVER.WARMUP_FACTOR = 1.0 / 1000
 _C.SOLVER.WARMUP_ITERS = 1000
 _C.SOLVER.WARMUP_METHOD = "linear"
 
-# Gradient accumulation.
 _C.SOLVER.GRAD_ACCUM_ITERS = 1
 
 # Save a checkpoint after every this number of iterations
@@ -377,6 +394,8 @@ _C.SOLVER.CHECKPOINT_PERIOD = 1
 _C.SOLVER.TRAIN_BATCH_SIZE = 16
 _C.SOLVER.TEST_BATCH_SIZE = 16
 
+_C.SOLVER.BIAS_LR_FACTOR = 1.0
+_C.SOLVER.WEIGHT_DECAY_BIAS = _C.SOLVER.WEIGHT_DECAY
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
@@ -403,6 +422,17 @@ _C.TEST.FLUSH_PERIOD = 0
 _C.TEST.POSTPROCESSOR = CN()
 _C.TEST.POSTPROCESSOR.NAME = ""  # e.g. "hard_dc" for hard data consistency
 
+#added calculate_pixel_variances
+_C.TEST.CALCULATE_PIXEL_VARIANCES = False
+_C.TEST.CALCULATE_NOISE = False
+_C.TEST.SENSE_MODEL = False
+_C.TEST.VARIANCE_CALCULATION_METHOD = "monte_carlo"
+_C.TEST.NUM_MONTE_CARLO_SAMPLES = 100
+_C.TEST.INPUT_NOISE_STD = 0.001792
+
+#added variances_list
+_C.TEST.VARIANCES_LIST = []
+
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
@@ -428,13 +458,13 @@ _C.CUDNN_BENCHMARK = False
 # ---------------------------------------------------------------------------- #
 _C.DESCRIPTION = CN()
 # Brief description about config
-_C.DESCRIPTION.BRIEF = ""
+_C.DESCRIPTION.BRIEF = "den"
 # The entity (team/individual) account for logging to Weights & Biases
-_C.DESCRIPTION.ENTITY_NAME = "ss_recon"
+_C.DESCRIPTION.ENTITY_NAME = "oni_team"
 # Project name for logging to Weights & Biases
-_C.DESCRIPTION.PROJECT_NAME = "ss_recon"
+_C.DESCRIPTION.PROJECT_NAME = "ICLR 2023"
 # Experiment name for logging to Weights & Biases
-_C.DESCRIPTION.EXP_NAME = ""
+_C.DESCRIPTION.EXP_NAME = "deneme"
 # Tags associated with experiment.
 # e.g. "fastmri_knee_mc" for fastMRI dataset; "unrolled" for using unrolled network; etc.
 _C.DESCRIPTION.TAGS = ()

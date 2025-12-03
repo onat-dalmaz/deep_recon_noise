@@ -61,13 +61,14 @@ class LossComputer(ABC):
         self,
         target: torch.Tensor,
         output: torch.Tensor,
+        noise: torch.Tensor,
         loss_name: str = None,
         signal_model: Optional[SenseModel] = None,
     ):
         if self.loss is not None:
             is_same_loss = isinstance(self.loss, str) and loss_name == self.loss
             assert loss_name is None or is_same_loss
-
+        # print(f"noise shape: {noise.shape}")
         # Compute metrics
         if loss_name == "mag_l1":
             abs_error = torch.abs(output - target)
@@ -87,6 +88,8 @@ class LossComputer(ABC):
         l2 = torch.sqrt(torch.mean(abs_error**2, dim=1))
         psnr = 20 * torch.log10(tgt_mag.max(dim=1)[0] / (l2 + EPS))
         nrmse = l2 / torch.sqrt(torch.mean(tgt_mag**2, dim=1))
+
+        # print(f"loss_name: {loss_name}")
 
         metrics_dict = {
             "l1": l1,
@@ -123,9 +126,12 @@ class LossComputer(ABC):
                 output = signal_model(output)
                 target = signal_model(target)
             else:
+                # print("in kspace losses")
                 target = oF.fft2c(target, channels_last=True)
                 output = oF.fft2c(output, channels_last=True)
+            
             abs_error = cplx.abs(target - output)
+            diff = target - output
             if loss_name == "k_l1":
                 metrics_dict["loss"] = torch.mean(abs_error)
             elif loss_name == "k_l1_sum":
@@ -179,6 +185,7 @@ class BasicLossComputer(LossComputer):
         pred: torch.Tensor = output["pred"]
         target = output["target"].to(pred.device)
         signal_model = output.get("signal_model")
+        noise = output.get("noise", None)
 
         if self.renormalize_data:
             normalization_args = {k: input.get(k, output.get(k, None)) for k in ["mean", "std"]}
@@ -193,7 +200,7 @@ class BasicLossComputer(LossComputer):
         else:
             output = pred
 
-        metrics_dict = self._get_metrics(target, output, self.loss, signal_model=signal_model)
+        metrics_dict = self._get_metrics(target, output,noise, self.loss, signal_model=signal_model)
         return metrics_dict
 
 
@@ -231,6 +238,8 @@ class N2RLossComputer(LossComputer):
         pred: torch.Tensor = output["pred"]
         target = output["target"].to(pred.device)
         signal_model = output.get("signal_model")
+        noise = output.get("noise", None)
+        # print(f"renormalize_data: {self.renormalize_data}")
         if self.renormalize_data:
             normalized = self._normalizer.undo(
                 image=pred, target=target, mean=input["mean"], std=input["std"]
@@ -241,7 +250,7 @@ class N2RLossComputer(LossComputer):
             output = pred
 
         # Compute metrics
-        metrics_dict = self._get_metrics(target, output, loss, signal_model=signal_model)
+        metrics_dict = self._get_metrics(target, output,noise, loss, signal_model=signal_model)
         return metrics_dict
 
     # def compute_robust_loss(self, group_loss):

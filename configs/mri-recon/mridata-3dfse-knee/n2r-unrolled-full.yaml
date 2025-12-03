@@ -1,0 +1,49 @@
+# Noise2Recon with supervised consistency full training
+_BASE_: "templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"Noise2Recon (Unrolled) @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x w/ {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans -- mridata 3D FSE, {DATALOADER.SAMPLER_TRAIN}, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, sigma={MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}"
+  ENTITY_NAME: 'ss_recon'
+  # EXP_NAME: f"n2r-unrolled/mridata/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled"
+  EXP_NAME: f"n2r-unrolled/mridata/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/mask-loss/rho={MODEL.CONSISTENCY.AUG.NOISE.MASK.RHO}--loss={MODEL.RECON_LOSS.NAME}--share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}--sup_cons={MODEL.N2R.USE_SUPERVISED_CONSISTENCY}--noise={AUG_TRAIN.USE_NOISE}--p={AUG_TRAIN.NOISE_P}"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - unrolled
+  - mridata_knee_3dfse
+  - noise2recon
+OUTPUT_DIR: f"results://noise2recon/mridata-unrolled/n2r/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}_block-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}step/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled_1"
+AUG_TEST:
+  UNDERSAMPLE:
+    ACCELERATIONS: (2,)  # TODO: Fill this in
+AUG_TRAIN:
+  NOISE_P: 0.2  # Noise augmentation probability
+  USE_NOISE: false  # Turn on noise augmentations
+  UNDERSAMPLE:
+    NAME: PoissonDiskMaskFunc
+    ACCELERATIONS: (2,)  # TODO: Fill this in
+    CALIBRATION_SIZE: 20
+DATALOADER:
+  SAMPLER_TRAIN: AlternatingSampler  # Toggle this to turn off alternate sampling - choices: ["", "AlternatingSampler"]
+  ALT_SAMPLER:  # FIXME: Worth tuning
+    PERIOD_SUPERVISED: 1
+    PERIOD_UNSUPERVISED: 1
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 14
+    NUM_UNDERSAMPLED: 13  # TODO: Change value to control number of undersampled scans.
+MODEL:
+  META_ARCHITECTURE: N2RModel
+  N2R:
+    META_ARCHITECTURE: GeneralizedUnrolledCNN
+    USE_SUPERVISED_CONSISTENCY: false
+  CONSISTENCY:
+    AUG:
+      NOISE:
+        MASK:
+          RHO: 1.0  # Best value from hyperparameter sweep
+        STD_DEV: (0.2, 0.5)  # Range of noise to sample from (not ablated in hyperparameters)
+    LOSS_NAME: k_l1  # Best value from hyperparameter sweep
+  RECON_LOSS:
+    NAME: k_l1  # Best value from hyperparameter sweep
+    RENORMALIZE_DATA: false
+SOLVER:
+  MAX_ITER: 80000
+VERSION: 1

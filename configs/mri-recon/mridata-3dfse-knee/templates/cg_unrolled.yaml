@@ -1,0 +1,9 @@
+_BASE_: "unrolled.yaml"
+MODEL:
+  META_ARCHITECTURE: "CGUnrolledCNN"
+  UNROLLED:
+    STEP_SIZES: (1.0,)
+    DC:
+      MAX_ITER: 20
+      EPS: 1e-5
+OUTPUT_DIR: f"results://mri-recon/mridata-3dfse-knee/modl_{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_steps_eps_{MODEL.UNROLLED.DC.EPS}/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"

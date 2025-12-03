@@ -1,0 +1,27 @@
+# Supervised training with unrolled network
+_BASE_: "../templates/unrolled.yaml"
+DESCRIPTION:
+  BRIEF: f"Supervised Unrolled ({MODEL.UNROLLED.BLOCK_ARCHITECTURE} block, {MODEL.UNROLLED.NUM_UNROLLED_STEPS} steps) -- fastmri 2D muliti-coil brain @ {AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x, {DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL} total scans, {DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED} undersampled scans, lr={SOLVER.BASE_LR}, bsz={SOLVER.TRAIN_BATCH_SIZE}, loss={MODEL.RECON_LOSS.NAME}, share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}, use_noise={AUG_TRAIN.USE_NOISE}, noise_p={AUG_TRAIN.NOISE_P}, num_scans={DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}"
+  ENTITY_NAME: 'ss_recon'
+  EXP_NAME: f"fastmri-brain-mini/sup-unrolled/{MODEL.UNROLLED.BLOCK_ARCHITECTURE}-{MODEL.UNROLLED.NUM_UNROLLED_STEPS}_{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x/{DATALOADER.SUBSAMPLE_TRAIN.NUM_TOTAL}total-{DATALOADER.SUBSAMPLE_TRAIN.NUM_UNDERSAMPLED}undersampled/loss={MODEL.RECON_LOSS.NAME}--share_weights={MODEL.UNROLLED.SHARE_WEIGHTS}--use_noise={AUG_TRAIN.USE_NOISE}--noise_p={AUG_TRAIN.NOISE_P}"
+  PROJECT_NAME: 'ss_recon'
+  TAGS:
+  - unrolled
+  - fastmri_brain_mini
+  - supervised
+DATALOADER:
+  SUBSAMPLE_TRAIN:
+    NUM_TOTAL: 54
+    NUM_UNDERSAMPLED: 0  # Undersampled scans cannot be used in supervised training.
+OUTPUT_DIR: f"results://mri-recon/fastmri-brain-mini/unrolled/{AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS}x"
+AUG_TRAIN:
+  NOISE_P: 0.1  # Based on hyperparamter search
+  USE_NOISE: false  # Turn on noise augmentations
+MODEL:
+  META_ARCHITECTURE: GeneralizedUnrolledCNN
+  RECON_LOSS:
+    NAME: l1  # Change to change the loss value
+    RENORMALIZE_DATA: false
+SOLVER:
+  MAX_ITER: 50000
+VERSION: 1

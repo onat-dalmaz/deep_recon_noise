@@ -22,7 +22,7 @@ from meddlr.data.build import build_recon_val_loader
 from meddlr.engine import DefaultTrainer, default_argument_parser, default_setup
 from meddlr.evaluation import DatasetEvaluators, ReconEvaluator, inference_on_dataset
 from meddlr.evaluation.testing import check_consistency, find_weights
-from meddlr.modeling.meta_arch import CSModel
+# from meddlr.modeling.meta_arch import CSModel, SENSEModel
 from meddlr.utils.logger import setup_logger
 
 _FILE_NAME = os.path.splitext(os.path.basename(__file__))[0]
@@ -38,11 +38,14 @@ class ZFReconEvaluator(ReconEvaluator):
     """Zero-filled recon evaluator."""
 
     def process(self, inputs, outputs):
+        # print(outputs.keys())
         zf_out = {k: outputs[k] for k in ("target",)}
         zf_image = outputs["zf_image"]
         if cplx.is_complex_as_real(zf_image):
             zf_image = torch.view_as_complex(zf_image)
         zf_out["pred"] = zf_image
+        #add pixel variances
+        # zf_out["pixel_variances"] = outputs["pixel_variances"]
         return super().process(inputs, zf_out)
 
 
@@ -197,6 +200,7 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
     overwrite = args.overwrite
     save_scans = args.save_scans or "save_scans" in args.ops
     compute_metrics = "metrics" in args.ops
+    correlation = args.correlated
     # TODO: Set up W&B configuration.
     # use_wandb = args.use_wandb
     # if use_wandb:
@@ -232,9 +236,11 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
         motion_vals = sorted(set(motion_vals))
     else:
         motion_vals = [0]
-
+    #TODO: uncomment if you want to run multiple trials
+    # trials=[args.trial]
+    trials = [i for i in range(args.trial)]
     values = itertools.product(
-        cfg.DATASETS.TEST, cfg.AUG_TEST.UNDERSAMPLE.ACCELERATIONS, noise_vals, motion_vals
+        cfg.DATASETS.TEST, cfg.AUG_TEST.UNDERSAMPLE.ACCELERATIONS, noise_vals, motion_vals,trials
     )
     values = list(values)
     all_results = []
@@ -248,7 +254,8 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
             )
         default_metrics.extend(args.extra_metrics)
 
-    for exp_idx, (dataset_name, acc, noise_level, motion_level) in enumerate(values):
+    for exp_idx, (dataset_name, acc, noise_level, motion_level,trial) in enumerate(values):
+        
         # Check if the current configuration already has metrics computed
         # If so, dont recompute
         params = {
@@ -256,6 +263,7 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
             "dataset": dataset_name,
             "Noise Level": noise_level,
             "Motion Level": motion_level,
+            "Trial": trial,
             "weights": weights_basename,
             "rescaled": not skip_rescale,
         }
@@ -266,33 +274,41 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
         logger.info(", ".join([f"{k}: {v}" for k, v in params.items()]))
         logger.info("==" * 30)
 
+        #print noise level
+        # print(f'Noise Level: {noise_level}')
+
         existing_metrics = None
-        if metrics is not None and compute_metrics:
-            try:
-                existing_metrics = find_metrics(metrics, params)
-            except KeyError:
-                existing_metrics = None
-            if existing_metrics is not None and len(existing_metrics) > 0:
-                eval_metrics = list(set(eval_metrics) - set(existing_metrics.columns))
-                if len(eval_metrics) == 0:
-                    logger.info(
-                        "Metrics for ({}) exist:\n{}".format(
-                            ", ".join([f"{k}: {v}" for k, v in params.items()]),
-                            tabulate(existing_metrics, headers=existing_metrics.columns),
-                        )
-                    )
-                    all_results.append(existing_metrics)
-                    continue
-
+        # if metrics is not None and compute_metrics:
+        #     try:
+        #         existing_metrics = find_metrics(metrics, params)
+        #     except KeyError:
+        #         existing_metrics = None
+        #     if existing_metrics is not None and len(existing_metrics) > 0:
+        #         eval_metrics = list(set(eval_metrics) - set(existing_metrics.columns))
+        #         if len(eval_metrics) == 0:
+        #             logger.info(
+        #                 "Metrics for ({}) exist:\n{}".format(
+        #                     ", ".join([f"{k}: {v}" for k, v in params.items()]),
+        #                     tabulate(existing_metrics, headers=existing_metrics.columns),
+        #                 )
+        #             )
+        #             all_results.append(existing_metrics)
+        #             continue
         # Add criterion and value after to avoid searching by it.
-        params.update({"Criterion Name": criterion, "Criterion Val": best_value})
+        params.update({"Criterion Name": criterion, "Criterion Val": best_value, "Trial": trial,"Correlated": correlation})#, "Regularization": cfg.MODEL.CS.REGULARIZATION})
 
+        # params.update({"Trial": criterion, )
+        # print noise level
+        # print(f'Noise Level: {noise_level}')
         # Assign the current acceleration
         s_cfg = cfg.clone()
         s_cfg.defrost()
         s_cfg.AUG_TRAIN.UNDERSAMPLE.ACCELERATIONS = (acc,)
         s_cfg.MODEL.CONSISTENCY.AUG.MOTION.RANGE = motion_level
         s_cfg.MODEL.CONSISTENCY.AUG.NOISE.STD_DEV = (noise_level,)
+        model.noise_level = noise_level
+        # print(f'Noise Level: {s_cfg.MODEL.CONSISTENCY.AUG.NOISE.STD_DEV}')
+        s_cfg.SEED = trial
         s_cfg.freeze()
 
         # Build a recon val loader
@@ -306,7 +322,10 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
 
         # Build evaluators. Only save reconstructions for last scan.
         params_str = "-".join(f"{k}={v}" for k, v in params.items() if k != "dataset")
+
         exp_output_dir = os.path.join(output_dir, dataset_name, params_str)
+        print(f'exp_output_dir: {exp_output_dir}')
+        
         evaluators = [
             ReconEvaluator(
                 s_cfg,
@@ -405,28 +424,25 @@ def eval(cfg, args, model, weights_basename, criterion, best_value):
 def main(args):
     cfg = setup(args)
     model = DefaultTrainer.build_model(cfg)
-    if isinstance(model, CSModel):
-        weights, criterion, best_value = None, None, 0
-    else:
-        metric = args.metric if args.metric else f"val_{cfg.MODEL.RECON_LOSS.NAME}"
-        weights, criterion, best_value = (
-            (cfg.MODEL.WEIGHTS, None, None)
-            if cfg.MODEL.WEIGHTS
-            else find_weights(cfg, metric, iter_limit=args.iter_limit)
-        )
-        model = model.to(cfg.MODEL.DEVICE)
-        Checkpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(weights, resume=args.resume)
+    metric = args.metric if args.metric else f"val_{cfg.MODEL.RECON_LOSS.NAME}"
+    weights, criterion, best_value = (
+        (cfg.MODEL.WEIGHTS, None, None)
+        if cfg.MODEL.WEIGHTS
+        else find_weights(cfg, metric, iter_limit=args.iter_limit)
+    )
+    model = model.to(cfg.MODEL.DEVICE)
+    Checkpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(weights, resume=args.resume)
 
-        # See https://github.com/pytorch/pytorch/issues/42300
-        logger.info("Checking weights were properly loaded...")
-        check_consistency(torch.load(weights)["model"], model)
+    # See https://github.com/pytorch/pytorch/issues/42300
+    logger.info("Checking weights were properly loaded...")
+    check_consistency(torch.load(weights)["model"], model)
 
-        logger.info("\n\n==============================")
-        logger.info("Loading weights from {}".format(weights))
+    logger.info("\n\n==============================")
+    logger.info("Loading weights from {}".format(weights))
 
     # Do not limit number of scans to evaluate during testing.
     cfg.defrost()
-    cfg.DATALOADER.SUBSAMPLE_TRAIN.NUM_VAL = -1
+    cfg.DATALOADER.SUBSAMPLE_TRAIN.NUM_VAL = 1
     cfg.freeze()
 
     eval(cfg, args, model, os.path.basename(weights) if weights else None, criterion, best_value)
@@ -458,6 +474,13 @@ if __name__ == "__main__":
         choices=("false", "standard", "sweep"),
         help="Type of noise evaluation",
     )
+    #add noise type correlated or not
+    parser.add_argument(
+        "--correlated",
+        default="false",
+        choices=("false", "true"),
+        help="Type of noise evaluation",
+    )
     parser.add_argument(
         "--motion",
         default="false",
@@ -466,10 +489,16 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--sweep-vals",
-        default=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        default= [0.03584072291851044,0.0896018072962761,0.1792036145925522], #
         nargs="*",
         type=float,
         help="args to sweep for noise",
+    )
+    parser.add_argument(
+        "--trial",
+        default=1,
+        type=int,
+        help="Which trial of the noise experiment",
     )
     parser.add_argument("--extra-metrics", nargs="*", help="Extra metrics for testing")
     parser.add_argument(
@@ -492,7 +521,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-rescale", action="store_true", help="Skip rescaling when evaluating"
     )
-    parser.add_argument("--save-scans", action="store_true", help="Save reconstruction outputs")
+    parser.add_argument("--save-scans", action="store_false", help="Save reconstruction outputs")
     parser.add_argument("--metrics-file", type=str, default="metrics.csv", help="Metrics file")
     # parser.add_argument(
     #     "--wandb", action="store_true", help="Log to W&B during evaluation"

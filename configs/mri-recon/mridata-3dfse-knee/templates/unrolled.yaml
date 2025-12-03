@@ -1,0 +1,57 @@
+# Template for unrolled network experiments with mridata.
+DATASETS:
+  TRAIN: ("mridata_knee_2019_train",)
+  VAL: ("mridata_knee_2019_val",)
+  TEST: ("mridata_knee_2019_test",)
+DATALOADER:
+  NUM_WORKERS: 4
+  DROP_LAST: true
+  PREFETCH_FACTOR: 2
+  SUBSAMPLE_TRAIN:
+    SEED: 1000
+    NUM_VAL: -1
+MODEL:
+  DEVICE: cuda
+  UNROLLED:
+    NUM_UNROLLED_STEPS: 8
+    NUM_RESBLOCKS: 2
+    NUM_FEATURES: 128
+    DROPOUT: 0.
+    STEP_SIZES: (0.0,)
+    CONV_BLOCK:
+      ACTIVATION: "relu"
+      NORM: "none"
+      ORDER: ("act", "conv")
+  NORMALIZER:
+    KEYWORDS: []
+    NAME: TopMagnitudeNormalizer
+  # The U-Net architecture will only be used if the MODEL.UNROLLED.BLOCK_ARCHITECTURE is set to "UnetModel"
+  UNET:
+    BLOCK_ORDER: ("conv", "relu", "conv", "relu", "batchnorm", "dropout")
+    CHANNELS: 32
+    DROPOUT: 0.0
+    IN_CHANNELS: 2
+    NORMALIZE: false
+    NUM_POOL_LAYERS: 4
+    OUT_CHANNELS: 2
+SOLVER:
+  OPTIMIZER: "Adam"
+  LR_SCHEDULER_NAME: ""
+  CHECKPOINT_PERIOD: 5000
+  GAMMA: 0.1
+  TRAIN_BATCH_SIZE: 2
+  GRAD_ACCUM_ITERS: 8
+  TEST_BATCH_SIZE: 12
+  MAX_ITER: 80000
+  BASE_LR: 1e-4
+TEST:
+  EVAL_PERIOD: 5000
+  VAL_METRICS:
+    RECON: ("psnr", "psnr_scan", "psnr_mag", "psnr_mag_scan", "nrmse", "nrmse_scan", "nrmse_mag", "nrmse_mag_scan", "ssim (Wang)", "ssim (Wang)_scan", "mae", "mae_scan")
+  VAL_AS_TEST: true
+  FLUSH_PERIOD: 0
+TIME_SCALE: "iter"
+SEED: 1000
+VIS_PERIOD: 100
+VERSION: 1
+CUDNN_BENCHMARK: false

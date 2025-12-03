@@ -161,7 +161,12 @@ def inference_on_dataset(
                 total_compute_time = 0
 
             start_compute_time = time.perf_counter()
-            outputs = model(inputs)
+            outputs = model(inputs,idx=idx)
+            # if idx == 0:
+            #     outputs = model(inputs,calculate_pixel_variances=True)
+            # else: 
+            #     outputs = model(inputs)
+            # print(outputs.keys(),"in evaluator.py")
             total_compute_time += time.perf_counter() - start_compute_time
 
             evaluator.process(inputs, outputs)

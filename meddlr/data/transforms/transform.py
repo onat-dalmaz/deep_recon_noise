@@ -222,10 +222,12 @@ class DataTransform:
         self.add_noise = add_noise
         self.add_motion = add_motion
         seed = cfg.SEED if cfg.SEED > -1 else None
+        self.seed =seed
         self.rng = np.random.RandomState(seed)
+        self.acceleration_rate=cfg.AUG_TEST.UNDERSAMPLE.ACCELERATIONS
         if is_test:
             # When we test we dont want to initialize with certain parameters (e.g. scheduler).
-            self.noiser = NoiseModel(cfg.MODEL.CONSISTENCY.AUG.NOISE.STD_DEV, seed=seed)
+            self.noiser = NoiseModel(cfg.MODEL.CONSISTENCY.AUG.NOISE.STD_DEV, seed=seed,cov_matrix_path=cfg.MODEL.CONSISTENCY.AUG.NOISE.COV_MATRIX_PATH)
             self.motion_simulator = MotionModel(cfg.MODEL.CONSISTENCY.AUG.MOTION.RANGE, seed=seed)
         else:
             self.noiser = NoiseModel.from_cfg(cfg, seed=seed)
@@ -281,10 +283,14 @@ class DataTransform:
         mean = out["mean"]
         std = out["std"]
 
+        
+
         # Get rid of batch dimension...
         masked_kspace = masked_kspace.squeeze(0)
         maps = maps.squeeze(0)
         target = target.squeeze(0)
+
+        # print(masked_kspace.shape)
 
         return {
             "kspace": masked_kspace,
@@ -341,10 +347,14 @@ class DataTransform:
         )  # handle rss vs. sensitivity-integrated
         norm = torch.sqrt(torch.mean(cplx.abs(target) ** 2))
 
+
         # TODO: Add other transforms here.
 
         # Apply mask in k-space
         seed = sum(tuple(map(ord, fname))) if self._is_test or is_fixed else None  # noqa
+
+        # print(seed)
+
         masked_kspace, mask = self._subsampler(
             kspace, mode="2D", seed=seed, acceleration=acceleration
         )
@@ -378,10 +388,16 @@ class DataTransform:
         add_motion = self.add_motion and (
             self._is_test or (not is_fixed and self.rng.uniform() < self.p_motion)
         )
+        masked_noise = torch.zeros_like(masked_kspace)
+        # print(add_noise)
+        # print(masked_kspace.size())
+        # print(isinstance(masked_kspace, tuple))
+
         if add_noise:
             # Seed should be different for each slice of a scan.
-            noise_seed = seed + slice_id if seed is not None else None
-            masked_kspace = self.noiser(masked_kspace, mask=mask, seed=noise_seed)
+            seed = self.seed
+            noise_seed = seed*1000 + slice_id if seed is not None else None
+            masked_kspace,masked_noise = self.noiser(masked_kspace, mask=mask, seed=noise_seed)
         if add_motion:
             # Motion seed should not be different for each slice for now.
             # TODO: Change this for 2D acquisitions.
@@ -393,6 +409,7 @@ class DataTransform:
 
         out = {
             "kspace": masked_kspace,
+            "noise": masked_noise,
             "maps": maps,
             "target": target,
             "mean": mean,
