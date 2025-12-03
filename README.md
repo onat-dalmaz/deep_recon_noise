@@ -22,11 +22,11 @@ We evaluate our method on knee and brain MRI datasets for both data-driven and p
 
 ---
 
-## 🖼️ Method Overview
+## 📊 Results
 
-![Methods Overview](methods_brain.png)
+![Results](methods_brain.png)
 
-*Overview of our efficient noise calculation method for deep learning-based MRI reconstructions.*
+*Results demonstrating our efficient noise calculation method on brain MRI reconstructions.*
 
 ---
 
