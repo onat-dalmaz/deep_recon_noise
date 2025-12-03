@@ -3,12 +3,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 
-Official implementation of **"Efficient Noise Calculation in Deep Learning-based MRI Reconstructions"**, accepted as a **Poster** at **ICML 2025**.
+Official implementation of **"Efficient Noise Calculation in Deep Learning-based MRI Reconstructions"**, accepted to **ICML 2025**.
 
-**Authors:** Onat Dalmaz · Arjun Desai · Reinhard Heckel · Tolga Cukur · Akshay Chaudhari · Brian Hargreaves
+**Authors:** Onat Dalmaz · Arjun D. Desai · Reinhard Heckel · Tolga Cukur · Akshay S. Chaudhari · Brian Hargreaves
 
-**ICML 2025 Poster:** West Exhibition Hall B2-B3 #W-204  
-**Session:** Wed 16 Jul 11 a.m. PDT — 1:30 p.m. PDT
+**Paper Links:**
+- [OpenReview](https://openreview.net/forum?id=br7fTbnd16)
+- [PMLR Proceedings](https://proceedings.mlr.press/v267/dalmaz25a.html)
 
 ---
 
@@ -180,11 +181,19 @@ All models can be trained and evaluated with our efficient noise calculation met
 If you use this code in your research, please cite our ICML 2025 paper:
 
 ```bibtex
-@inproceedings{dalmaz2025efficient,
-  title={Efficient Noise Calculation in Deep Learning-based MRI Reconstructions},
-  author={Dalmaz, Onat and Desai, Arjun and Heckel, Reinhard and Cukur, Tolga and Chaudhari, Akshay and Hargreaves, Brian},
-  booktitle={International Conference on Machine Learning (ICML)},
-  year={2025}
+@InProceedings{pmlr-v267-dalmaz25a,
+  title = 	 {Efficient Noise Calculation in Deep Learning-based {MRI} Reconstructions},
+  author =       {Dalmaz, Onat and Desai, Arjun D and Heckel, Reinhard and Cukur, Tolga and Chaudhari, Akshay S and Hargreaves, Brian},
+  booktitle = 	 {Proceedings of the 42nd International Conference on Machine Learning},
+  pages = 	 {12280--12313},
+  year = 	 {2025},
+  editor = 	 {Singh, Aarti and Fazel, Maryam and Hsu, Daniel and Lacoste-Julien, Simon and Berkenkamp, Felix and Maharaj, Tegan and Wagstaff, Kiri and Zhu, Jerry},
+  volume = 	 {267},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {13--19 Jul},
+  publisher =    {PMLR},
+  pdf = 	 {https://raw.githubusercontent.com/mlresearch/v267/main/assets/dalmaz25a/dalmaz25a.pdf},
+  url = 	 {https://proceedings.mlr.press/v267/dalmaz25a.html}
 }
 ```
 
@@ -223,5 +232,7 @@ For questions or issues, please open an issue on GitHub or contact the authors.
 
 ## 🔗 Related Links
 
+- [OpenReview](https://openreview.net/forum?id=br7fTbnd16) - Paper on OpenReview
+- [PMLR Proceedings](https://proceedings.mlr.press/v267/dalmaz25a.html) - Official publication in PMLR
 - [ICML 2025](https://icml.cc/) - International Conference on Machine Learning
 - [meddlr Framework](https://github.com/ad12/meddlr) - Base framework for medical image reconstruction
